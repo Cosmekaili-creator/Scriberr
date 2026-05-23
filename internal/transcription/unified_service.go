@@ -29,12 +29,16 @@ const (
 	ModelSortformer      = "sortformer"
 	ModelOpenAI          = "openai_whisper"
 	ModelVoxtral         = "voxtral"
+	ModelAssemblyAI      = "assemblyai"
+	ModelDeepgram        = "deepgram"
 	ModelDiarization31   = "pyannote/speaker-diarization-3.1"
 	FamilyNvidiaCanary   = "nvidia_canary"
 	FamilyNvidiaParakeet = "nvidia_parakeet"
 	FamilyWhisper        = "whisper"
 	FamilyOpenAI         = "openai"
 	FamilyMistralVoxtral = "mistral_voxtral"
+	FamilyAssemblyAI     = "assemblyai"
+	FamilyDeepgram       = "deepgram"
 	DiarizeSortformer    = "nvidia_sortformer"
 	OutputFormatJSON     = "json"
 )
@@ -387,6 +391,10 @@ func (u *UnifiedTranscriptionService) selectModels(params models.WhisperXParams)
 		transcriptionModelID = ModelOpenAI
 	case FamilyMistralVoxtral:
 		transcriptionModelID = ModelVoxtral
+	case FamilyAssemblyAI:
+		transcriptionModelID = ModelAssemblyAI
+	case FamilyDeepgram:
+		transcriptionModelID = ModelDeepgram
 	default:
 		transcriptionModelID = ModelWhisperX // Default fallback
 	}
@@ -414,7 +422,11 @@ func (u *UnifiedTranscriptionService) selectModels(params models.WhisperXParams)
 
 // transcriptionIncludesDiarization checks if the transcription model already includes diarization
 func (u *UnifiedTranscriptionService) transcriptionIncludesDiarization(modelID string, params models.WhisperXParams) bool {
-	// WhisperX includes diarization when enabled
+	// Cloud providers handle diarization natively via their own API
+	if modelID == ModelAssemblyAI || modelID == ModelDeepgram {
+		return true
+	}
+
 	// WhisperX includes diarization when enabled
 	if modelID == ModelWhisperX {
 		if params.Diarize {
@@ -565,6 +577,10 @@ func (u *UnifiedTranscriptionService) convertParametersForModel(params models.Wh
 		return u.convertToOpenAIParams(params)
 	case ModelVoxtral:
 		return u.convertToVoxtralParams(params)
+	case ModelAssemblyAI:
+		return u.convertToAssemblyAIParams(params)
+	case ModelDeepgram:
+		return u.convertToDeepgramParams(params)
 	default:
 		// Fallback to legacy conversion
 		return u.parametersToMap(params)
@@ -590,6 +606,36 @@ func (u *UnifiedTranscriptionService) convertToOpenAIParams(params models.Whispe
 		paramMap["api_key"] = *params.APIKey
 	}
 
+	return paramMap
+}
+
+// convertToAssemblyAIParams converts to AssemblyAI-specific parameters.
+func (u *UnifiedTranscriptionService) convertToAssemblyAIParams(params models.WhisperXParams) map[string]interface{} {
+	paramMap := map[string]interface{}{
+		"model":  params.Model,
+		"diarize": params.Diarize,
+	}
+	if params.Language != nil && *params.Language != "" {
+		paramMap["language"] = *params.Language
+	}
+	if params.APIKey != nil && *params.APIKey != "" {
+		paramMap["api_key"] = *params.APIKey
+	}
+	return paramMap
+}
+
+// convertToDeepgramParams converts to Deepgram-specific parameters.
+func (u *UnifiedTranscriptionService) convertToDeepgramParams(params models.WhisperXParams) map[string]interface{} {
+	paramMap := map[string]interface{}{
+		"model":  params.Model,
+		"diarize": params.Diarize,
+	}
+	if params.Language != nil && *params.Language != "" {
+		paramMap["language"] = *params.Language
+	}
+	if params.APIKey != nil && *params.APIKey != "" {
+		paramMap["api_key"] = *params.APIKey
+	}
 	return paramMap
 }
 

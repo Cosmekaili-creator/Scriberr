@@ -22,6 +22,7 @@ import (
 	"scriberr/internal/sse"
 	"scriberr/internal/transcription"
 	"scriberr/internal/transcription/adapters"
+	"scriberr/internal/transcription/adapters/cloudprovider"
 	"scriberr/internal/transcription/registry"
 	"scriberr/pkg/logger"
 )
@@ -239,6 +240,10 @@ func registerAdapters(cfg *config.Config) {
 		adapters.NewVoxtralAdapter(voxtralEnvPath))
 	registry.RegisterTranscriptionAdapter("openai_whisper",
 		adapters.NewOpenAIAdapter(cfg.OpenAIAPIKey))
+	registry.RegisterTranscriptionAdapter("assemblyai",
+		cloudprovider.NewAssemblyAIAdapter(cfg.AssemblyAIAPIKey))
+	registry.RegisterTranscriptionAdapter("deepgram",
+		cloudprovider.NewDeepgramAdapter(cfg.DeepgramAPIKey))
 
 	// Register diarization adapters
 	registry.RegisterDiarizationAdapter("pyannote",

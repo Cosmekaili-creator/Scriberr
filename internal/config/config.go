@@ -39,6 +39,10 @@ type Config struct {
 	// OpenAI configuration
 	OpenAIAPIKey string
 
+	// Cloud transcription providers
+	AssemblyAIAPIKey string
+	DeepgramAPIKey   string
+
 	// Hugging Face configuration
 	HFToken string
 }
@@ -68,8 +72,10 @@ func Load() *Config {
 		TempDir:        getEnv("TEMP_DIR", "data/temp"),
 		WhisperXEnv:    getEnv("WHISPERX_ENV", "data/whisperx-env"),
 		SecureCookies:  getEnv("SECURE_COOKIES", defaultSecure) == "true",
-		OpenAIAPIKey:   getEnv("OPENAI_API_KEY", ""),
-		HFToken:        getEnv("HF_TOKEN", ""),
+		OpenAIAPIKey:     getEnv("OPENAI_API_KEY", ""),
+		AssemblyAIAPIKey: getEnv("ASSEMBLYAI_API_KEY", ""),
+		DeepgramAPIKey:   getEnv("DEEPGRAM_API_KEY", ""),
+		HFToken:          getEnv("HF_TOKEN", ""),
 	}
 }
 

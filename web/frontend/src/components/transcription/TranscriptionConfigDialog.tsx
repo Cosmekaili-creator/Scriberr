@@ -266,8 +266,14 @@ export const TranscriptionConfigDialog = memo(function TranscriptionConfigDialog
     const updateParam = <K extends keyof WhisperXParams>(key: K, value: WhisperXParams[K]) => {
         setParams(prev => {
             const newParams = { ...prev, [key]: value };
-            if (key === 'model_family' && value === 'whisper') {
-                newParams.diarize_model = 'pyannote';
+            if (key === 'model_family') {
+                if (value === 'whisper') {
+                    newParams.diarize_model = 'pyannote';
+                } else if (value === 'assemblyai') {
+                    newParams.model = 'universal-2';
+                } else if (value === 'deepgram') {
+                    newParams.model = 'nova-2';
+                }
             }
             return newParams;
         });
@@ -367,11 +373,13 @@ export const TranscriptionConfigDialog = memo(function TranscriptionConfigDialog
                         value={params.model_family}
                         onValueChange={(v) => updateParam('model_family', v)}
                         options={[
-                            { value: "whisper", label: "Whisper" },
-                            { value: "nvidia_parakeet", label: "NVIDIA Parakeet" },
-                            { value: "nvidia_canary", label: "NVIDIA Canary" },
-                            { value: "mistral_voxtral", label: "Mistral Voxtral" },
-                            { value: "openai", label: "OpenAI" },
+                            { value: "whisper", label: "Whisper (local)" },
+                            { value: "nvidia_parakeet", label: "NVIDIA Parakeet (local)" },
+                            { value: "nvidia_canary", label: "NVIDIA Canary (local)" },
+                            { value: "mistral_voxtral", label: "Mistral Voxtral (local)" },
+                            { value: "openai", label: "OpenAI Whisper (cloud)" },
+                            { value: "assemblyai", label: "AssemblyAI (cloud)" },
+                            { value: "deepgram", label: "Deepgram (cloud)" },
                         ]}
                     />
 
@@ -402,6 +410,12 @@ export const TranscriptionConfigDialog = memo(function TranscriptionConfigDialog
                     )}
                     {params.model_family === "mistral_voxtral" && (
                         <VoxtralConfig params={params} updateParam={updateParam} />
+                    )}
+                    {params.model_family === "assemblyai" && (
+                        <AssemblyAIConfig params={params} updateParam={updateParam} />
+                    )}
+                    {params.model_family === "deepgram" && (
+                        <DeepgramConfig params={params} updateParam={updateParam} />
                     )}
                 </div>
 
@@ -697,6 +711,114 @@ function VoxtralConfig({ params, updateParam }: ConfigProps) {
                     />
                 </FormField>
             </AdvancedAccordion>
+        </div>
+    );
+}
+
+function AssemblyAIConfig({ params, updateParam }: ConfigProps) {
+    return (
+        <div className="space-y-6">
+            <Section title="API Configuration">
+                <div className="space-y-4">
+                    <FormField
+                        label="AssemblyAI API Key"
+                        description="Your key from app.assemblyai.com. Leave empty to use the server's ASSEMBLYAI_API_KEY."
+                    >
+                        <Input
+                            type="password"
+                            placeholder="your-assemblyai-api-key"
+                            value={params.api_key || ""}
+                            onChange={(e) => updateParam('api_key', e.target.value)}
+                            className={inputClassName}
+                        />
+                    </FormField>
+
+                    <SelectField
+                        label="Model"
+                        description="'Universal-2' is the standard model; 'Universal-3 Pro' is the highest quality; 'Nano' is fastest/cheapest."
+                        value={params.model || "universal-2"}
+                        onValueChange={(v) => updateParam('model', v)}
+                        options={[
+                            { value: "universal-2", label: "Universal-2 (high accuracy)" },
+                            { value: "universal-3-pro", label: "Universal-3 Pro (best quality)" },
+                        ]}
+                    />
+
+                    <SelectField
+                        label="Language"
+                        description="Source language. 'Auto-detect' lets AssemblyAI identify it automatically."
+                        value={params.language || "auto"}
+                        onValueChange={(v) => updateParam('language', v === "auto" ? undefined : v)}
+                        options={LANGUAGES}
+                    />
+
+                    <SwitchField
+                        id="assemblyai-diarize"
+                        label="Speaker Labels — identify and label individual speakers"
+                        checked={params.diarize}
+                        onCheckedChange={(v) => updateParam('diarize', v)}
+                    />
+                </div>
+            </Section>
+
+            <InfoBanner variant="info" title="Cloud Transcription">
+                Audio is sent to AssemblyAI's servers. A ~60-second turnaround for 1 hour of audio is typical. No local CPU is used during transcription.
+            </InfoBanner>
+        </div>
+    );
+}
+
+function DeepgramConfig({ params, updateParam }: ConfigProps) {
+    return (
+        <div className="space-y-6">
+            <Section title="API Configuration">
+                <div className="space-y-4">
+                    <FormField
+                        label="Deepgram API Key"
+                        description="Your key from console.deepgram.com. Leave empty to use the server's DEEPGRAM_API_KEY."
+                    >
+                        <Input
+                            type="password"
+                            placeholder="your-deepgram-api-key"
+                            value={params.api_key || ""}
+                            onChange={(e) => updateParam('api_key', e.target.value)}
+                            className={inputClassName}
+                        />
+                    </FormField>
+
+                    <SelectField
+                        label="Model"
+                        description="nova-2 offers the best accuracy for general use."
+                        value={params.model || "nova-2"}
+                        onValueChange={(v) => updateParam('model', v)}
+                        options={[
+                            { value: "nova-2",         label: "Nova 2 (best accuracy)" },
+                            { value: "nova-2-medical", label: "Nova 2 Medical" },
+                            { value: "enhanced",       label: "Enhanced" },
+                            { value: "base",           label: "Base (fastest)" },
+                        ]}
+                    />
+
+                    <SelectField
+                        label="Language"
+                        description="Source language. Required for non-nova-2 models."
+                        value={params.language || "en"}
+                        onValueChange={(v) => updateParam('language', v === "auto" ? undefined : v)}
+                        options={LANGUAGES}
+                    />
+
+                    <SwitchField
+                        id="deepgram-diarize"
+                        label="Speaker Diarization — identify and label individual speakers"
+                        checked={params.diarize}
+                        onCheckedChange={(v) => updateParam('diarize', v)}
+                    />
+                </div>
+            </Section>
+
+            <InfoBanner variant="info" title="Cloud Transcription">
+                Audio is sent to Deepgram's servers. Results return in real-time (synchronous) — typically a few seconds for any file length. No local CPU is used.
+            </InfoBanner>
         </div>
     );
 }
