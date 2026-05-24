@@ -142,9 +142,19 @@ export function AudioRecorder({
 		};
 	}, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-	// Handle background recording - prevent page unload warnings during recording
+	// Handle background recording - prevent page unload warnings, keep screen on
 	useEffect(() => {
 		const originalTitle = document.title;
+		let wakeLock: WakeLockSentinel | null = null;
+
+		const acquireWakeLock = async () => {
+			if (!('wakeLock' in navigator)) return;
+			try {
+				wakeLock = await navigator.wakeLock.request('screen');
+			} catch {
+				// Non-critical — device may not support it or permission denied
+			}
+		};
 
 		const handleBeforeUnload = (e: BeforeUnloadEvent) => {
 			if (isRecording) {
@@ -155,17 +165,20 @@ export function AudioRecorder({
 			}
 		};
 
+		// Wake lock is released automatically when the page is hidden;
+		// re-acquire it when the user comes back to the app.
 		const handleVisibilityChange = () => {
-			// Continue recording even when tab is not visible
+			if (document.visibilityState === 'visible') {
+				acquireWakeLock();
+			}
 		};
 
 		if (isRecording) {
-			// Update page title to show recording status
 			document.title = `🔴 Recording... - ${originalTitle}`;
 			window.addEventListener("beforeunload", handleBeforeUnload);
 			document.addEventListener("visibilitychange", handleVisibilityChange);
+			acquireWakeLock();
 		} else {
-			// Restore original title
 			document.title = originalTitle;
 		}
 
@@ -173,6 +186,7 @@ export function AudioRecorder({
 			document.title = originalTitle;
 			window.removeEventListener("beforeunload", handleBeforeUnload);
 			document.removeEventListener("visibilitychange", handleVisibilityChange);
+			wakeLock?.release().catch(() => {});
 		};
 	}, [isRecording]);
 
@@ -367,7 +381,7 @@ export function AudioRecorder({
 						</div>
 						{isRecording && (
 							<div className="text-xs text-brand-600 dark:text-brand-400 mt-1">
-								Recording continues even if you switch tabs
+								Keep this screen open while recording
 							</div>
 						)}
 					</div>
