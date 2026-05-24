@@ -73,6 +73,9 @@ func assemblyAIUpload(
 	}
 	if diarize, ok := params["diarize"].(bool); ok && diarize {
 		requestBody["speaker_labels"] = true
+		if n, ok := params["speakers_expected"].(int); ok && n > 0 {
+			requestBody["speakers_expected"] = n
+		}
 	}
 
 	bodyJSON, err := json.Marshal(requestBody)

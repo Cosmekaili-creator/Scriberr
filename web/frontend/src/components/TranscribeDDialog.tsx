@@ -50,6 +50,7 @@ export function TranscribeDDialog({
   const [selectedProfileId, setSelectedProfileId] = useState<string>("");
   const [profilesLoading, setProfilesLoading] = useState(false);
   const [defaultProfile, setDefaultProfile] = useState<TranscriptionProfile | null>(null);
+  const [speakersExpected, setSpeakersExpected] = useState<number>(0);
 
   const fetchProfiles = useCallback(async () => {
     try {
@@ -106,7 +107,15 @@ export function TranscribeDDialog({
 
     const selectedProfile = profiles.find(p => p.id === selectedProfileId);
     if (selectedProfile) {
-      onStartTranscription(selectedProfile.parameters, selectedProfile.id);
+      const params = { ...selectedProfile.parameters };
+      if (speakersExpected > 0) {
+        params.min_speakers = speakersExpected;
+        params.max_speakers = speakersExpected;
+      } else {
+        params.min_speakers = undefined;
+        params.max_speakers = undefined;
+      }
+      onStartTranscription(params, selectedProfile.id);
     }
   };
 
@@ -183,7 +192,23 @@ export function TranscribeDDialog({
             )}
           </div>
 
-
+          <div className="space-y-2">
+            <Label className="text-[var(--text-secondary)] font-medium">Number of speakers</Label>
+            <Select value={String(speakersExpected)} onValueChange={v => setSpeakersExpected(Number(v))}>
+              <SelectTrigger className="h-11 rounded-[var(--radius-btn)] bg-[var(--bg-main)] border border-[var(--border-subtle)] text-[var(--text-primary)] focus:ring-[var(--brand-light)] focus:border-[var(--brand-solid)] shadow-none">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="glass-card rounded-[var(--radius-btn)] border border-[var(--border-subtle)] shadow-[var(--shadow-float)]">
+                <SelectItem value="0" className="text-[var(--text-primary)] focus:bg-[var(--brand-light)] focus:text-[var(--brand-solid)] rounded-[8px] my-1 mx-1 cursor-pointer">Auto-detect</SelectItem>
+                {[2, 3, 4, 5, 6].map(n => (
+                  <SelectItem key={n} value={String(n)} className="text-[var(--text-primary)] focus:bg-[var(--brand-light)] focus:text-[var(--brand-solid)] rounded-[8px] my-1 mx-1 cursor-pointer">{n} speakers</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-[var(--text-tertiary)]">
+              Improves speaker separation when you know how many people are speaking.
+            </p>
+          </div>
         </div>
 
         <DialogFooter className="p-6 pt-2 gap-3">

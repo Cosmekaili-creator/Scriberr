@@ -621,6 +621,9 @@ func (u *UnifiedTranscriptionService) convertToAssemblyAIParams(params models.Wh
 	if params.APIKey != nil && *params.APIKey != "" {
 		paramMap["api_key"] = *params.APIKey
 	}
+	if params.MinSpeakers != nil && *params.MinSpeakers > 0 {
+		paramMap["speakers_expected"] = *params.MinSpeakers
+	}
 	return paramMap
 }
 
