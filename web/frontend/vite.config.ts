@@ -11,32 +11,36 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      injectRegister: 'auto',
+      includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],
       manifest: {
         name: 'Scriberr',
         short_name: 'Scriberr',
-        description: 'Offline Audio Transcription',
-        theme_color: '#8936FF',
-        background_color: '#2EC6FE',
+        description: 'AI-powered audio transcription',
+        theme_color: '#FF6D20',
+        background_color: '#0a0a0a',
         display: 'standalone',
-        orientation: 'any',
+        orientation: 'portrait',
         start_url: '/',
+        scope: '/',
         id: 'scriberr-transcription',
         icons: [
-          {
-            src: 'icon512_maskable.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'maskable'
-          },
-          {
-            src: 'icon512_rounded.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any'
+          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
+        share_target: {
+          action: '/share-target',
+          method: 'POST',
+          enctype: 'multipart/form-data',
+          params: {
+            files: [{ name: 'audio', accept: ['audio/*', 'video/*', '.m4a', '.mp3', '.wav', '.mp4', '.ogg', '.flac', '.aac', '.webm'] }]
           }
-        ]
+        }
       }
     })
   ],

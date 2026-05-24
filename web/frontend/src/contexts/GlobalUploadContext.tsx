@@ -9,6 +9,7 @@ import { useLocation } from "react-router-dom";
 import { useAudioUpload, useMultiTrackUpload } from "@/features/transcription/hooks/useAudioFiles";
 import { useToast } from "@/components/ui/toast";
 import { MultiTrackUploadDialog } from "@/features/transcription/components/MultiTrackUploadDialog";
+import { useSharedAudio } from "@/hooks/useSharedAudio";
 
 // Types
 interface FileWithType {
@@ -247,6 +248,10 @@ export function GlobalUploadProvider({ children }: PropsWithChildren) {
         [handleMultiTrackUpload, handleMultiTrackDialogClose]
     );
 
+
+    useSharedAudio((file) => {
+        handleFileSelect(file);
+    });
 
     const value: GlobalUploadContextValue = {
         handleFileSelect,
