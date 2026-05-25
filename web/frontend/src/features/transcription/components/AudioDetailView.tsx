@@ -136,6 +136,7 @@ export const AudioDetailView = function AudioDetailView({ audioId: propAudioId }
     };
 
     const handleSeek = (time: number) => {
+        if (!Number.isFinite(time) || time < 0) return;
         if (audioPlayerRef.current) {
             audioPlayerRef.current.seekTo(time);
             setCurrentTime(time);

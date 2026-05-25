@@ -79,14 +79,23 @@ func (b *Broadcaster) listen() {
 
 		case msg := <-b.broadcast:
 			b.mutex.RLock()
-			// Send only to subscribers of this job
+			// Send to subscribers of this specific job
 			if clients, ok := b.subscribers[msg.JobID]; ok {
 				for s := range clients {
-					// Send non-blocking
 					select {
 					case s <- msg.Event:
 					default:
 						logger.Warn("Skipping slow SSE client", "job_id", msg.JobID)
+					}
+				}
+			}
+			// Also send to wildcard subscribers (single global connection per session)
+			if clients, ok := b.subscribers["*"]; ok {
+				for s := range clients {
+					select {
+					case s <- msg.Event:
+					default:
+						logger.Warn("Skipping slow wildcard SSE client", "job_id", msg.JobID)
 					}
 				}
 			}
@@ -112,13 +121,12 @@ func (b *Broadcaster) Shutdown() {
 	close(b.shutdown)
 }
 
-// ServeHTTP handles the SSE connection
+// ServeHTTP handles the SSE connection.
+// Pass job_id=* (or omit job_id) to receive events for all jobs in one connection.
 func (b *Broadcaster) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Require Job ID
 	jobID := r.URL.Query().Get("job_id")
 	if jobID == "" {
-		http.Error(w, "job_id is required", http.StatusBadRequest)
-		return
+		jobID = "*"
 	}
 
 	// Set headers for SSE
@@ -152,7 +160,11 @@ func (b *Broadcaster) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// Send initial connection message
-	fmt.Fprintf(w, "data: {\"type\":\"connected\", \"job_id\":\"%s\"}\n\n", jobID)
+	if jobID == "*" {
+		fmt.Fprintf(w, "data: {\"type\":\"connected\", \"global\":true}\n\n")
+	} else {
+		fmt.Fprintf(w, "data: {\"type\":\"connected\", \"job_id\":\"%s\"}\n\n", jobID)
+	}
 	flusher.Flush()
 
 	// Keep connection open and push events

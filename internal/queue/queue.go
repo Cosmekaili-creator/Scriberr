@@ -187,6 +187,12 @@ func (tq *TaskQueue) worker(id int) {
 
 			logger.WorkerOperation(id, jobID, "start")
 
+			// Guard against duplicate processing: skip if already claimed by another worker
+			if existing, err := tq.jobRepo.FindByID(context.Background(), jobID); err == nil && existing.Status == models.StatusProcessing {
+				logger.Warn("Job already processing, skipping duplicate", "worker_id", id, "job_id", jobID)
+				continue
+			}
+
 			// Update job status to processing
 			if err := tq.updateJobStatus(jobID, models.StatusProcessing); err != nil {
 				logger.Error("Failed to update job status", "worker_id", id, "job_id", jobID, "error", err)

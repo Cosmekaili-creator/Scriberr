@@ -321,23 +321,53 @@ func (s *OpenAIService) ValidateAPIKey(ctx context.Context) error {
 	return nil
 }
 
-// GetContextWindow returns the context window size for a given OpenAI model
+// GetContextWindow returns the context window size for a given model.
+// Covers OpenAI models and common third-party models served via OpenAI-compatible APIs
+// (OpenRouter, Groq, Google AI Studio, etc.).
 func (s *OpenAIService) GetContextWindow(ctx context.Context, model string) (int, error) {
-	// Known context windows for OpenAI models
-	// As of late 2024/early 2025
 	switch {
+	// OpenAI
 	case strings.HasPrefix(model, "gpt-4-turbo"), strings.HasPrefix(model, "gpt-4o"):
 		return 128000, nil
 	case strings.HasPrefix(model, "gpt-4-32k"):
 		return 32768, nil
 	case strings.HasPrefix(model, "gpt-4"):
 		return 8192, nil
-	case strings.HasPrefix(model, "gpt-3.5-turbo-16k"):
-		return 16385, nil
 	case strings.HasPrefix(model, "gpt-3.5-turbo"):
-		return 16385, nil // Most recent gpt-3.5-turbo is 16k
+		return 16385, nil
+	case strings.HasPrefix(model, "o1"), strings.HasPrefix(model, "o3"), strings.HasPrefix(model, "o4"):
+		return 200000, nil
+
+	// Google Gemini
+	case strings.Contains(model, "gemini-2"), strings.Contains(model, "gemini-1.5"):
+		return 1048576, nil
+	case strings.Contains(model, "gemini-1.0"), strings.Contains(model, "gemini-pro"):
+		return 32768, nil
+
+	// Anthropic Claude
+	case strings.Contains(model, "claude"):
+		return 200000, nil
+
+	// Meta Llama
+	case strings.Contains(model, "llama-3.1"), strings.Contains(model, "llama-3.2"), strings.Contains(model, "llama-3.3"):
+		return 131072, nil
+	case strings.Contains(model, "llama-3"), strings.Contains(model, "llama3"):
+		return 8192, nil
+
+	// Mistral / Mixtral
+	case strings.Contains(model, "mistral"), strings.Contains(model, "mixtral"):
+		return 32768, nil
+
+	// Alibaba Qwen
+	case strings.Contains(model, "qwen"):
+		return 131072, nil
+
+	// DeepSeek
+	case strings.Contains(model, "deepseek"):
+		return 65536, nil
+
+	// Conservative default for any other modern model
 	default:
-		// Default fallback
-		return 4096, nil
+		return 32000, nil
 	}
 }

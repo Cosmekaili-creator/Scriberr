@@ -217,6 +217,13 @@ export const fr: Record<string, string> = {
   'settings.summary.table.deleteConfirm': 'Êtes-vous sûr de vouloir supprimer « {name} » ?',
   'settings.summary.table.delete': 'Supprimer',
 
+  // Settings - Summary default template
+  'settings.summary.default.title': 'Modèle par défaut',
+  'settings.summary.default.desc': 'Ce modèle sera pré-sélectionné à l\'ouverture de la fenêtre de résumé.',
+  'settings.summary.default.select': 'Sélectionner un modèle par défaut',
+  'settings.summary.default.none': 'Aucun (pas de défaut)',
+  'settings.summary.default.saved': 'Modèle par défaut enregistré',
+
   // Settings - Page
   'settings.page.title': 'Paramètres',
   'settings.page.description': 'Gérez les paramètres de votre compte et vos profils de transcription.',
@@ -496,6 +503,10 @@ export const fr: Record<string, string> = {
   'recorder.uploading': 'Téléversement en cours...',
   'recorder.upload': 'Téléverser l\'enregistrement',
   'recorder.completed': '✓ Enregistrement terminé ! Vérifiez et téléversez lorsque vous êtes prêt.',
+  'recorder.discardTitle': 'Abandonner l\'enregistrement ?',
+  'recorder.discardDescription': 'L\'enregistrement en cours sera perdu. Cette action est irréversible.',
+  'recorder.discardConfirm': 'Abandonner',
+  'recorder.discardCancel': 'Continuer l\'enregistrement',
 
   // System Audio Recorder
   'recorder.system.title': 'Enregistrer l\'audio système',
@@ -823,6 +834,8 @@ export const fr: Record<string, string> = {
   'transcription.config.languageDesc': 'Langue du contenu audio',
   'transcription.config.multiTrackTitle': 'Audio multi-pistes',
   'transcription.config.multiTrackDesc': 'Cette tâche contient plusieurs pistes audio. Chaque piste sera transcrite séparément et fusionnée avec des étiquettes de locuteur.',
+  'transcription.config.multiTrackEnabled': 'Transcription multi-pistes',
+  'transcription.config.multiTrackEnabledHelp': 'Active la prise en charge des fichiers audio multi-pistes. Incompatible avec la diarisation des locuteurs.',
   'transcription.config.paramDesc.batch_size': 'Nombre de segments audio traités simultanément. Des valeurs plus élevées utilisent plus de mémoire mais peuvent être plus rapides.',
   'transcription.config.paramDesc.beam_size': 'Largeur de recherche par faisceau. Des valeurs plus élevées améliorent la précision mais augmentent le temps de traitement.',
   'transcription.config.paramDesc.compute_type': 'Précision numérique pour l\'inférence du modèle. Une précision plus faible est plus rapide mais peut réduire la précision.',

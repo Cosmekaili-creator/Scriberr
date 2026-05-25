@@ -368,11 +368,26 @@ export const TranscriptionConfigDialog = memo(function TranscriptionConfigDialog
                         ]}
                     />
 
-                    {/* Multi-track notice */}
+                    {/* Multi-track notice (when transcribing a known multi-track job) */}
                     {isMultiTrack && (
                         <InfoBanner variant="info" title={t('transcription.config.multiTrackTitle')}>
                             {t('transcription.config.multiTrackDesc')}
                         </InfoBanner>
+                    )}
+
+                    {/* Multi-track toggle (editable in profile mode; locked when transcribing a multi-track file) */}
+                    {(isProfileMode || isMultiTrack) && (
+                        <SwitchField
+                            id="is_multi_track_enabled"
+                            label={t('transcription.config.multiTrackEnabled')}
+                            description={t('transcription.config.multiTrackEnabledHelp')}
+                            checked={params.is_multi_track_enabled}
+                            onCheckedChange={(v) => {
+                                updateParam('is_multi_track_enabled', v);
+                                if (v) updateParam('diarize', false);
+                            }}
+                            disabled={isMultiTrack}
+                        />
                     )}
 
                     {/* Model-Specific Configuration */}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { getSupportedAudioMimeType } from "@/utils/mediaUtils";
 import {
 	MonitorSpeaker,
 	Mic,
@@ -20,6 +21,16 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -74,6 +85,7 @@ export function SystemAudioRecorder({
 	const [compatibilityError, setCompatibilityError] = useState<string | null>(null);
 	const [permissionDenied, setPermissionDenied] = useState(false);
 	const [micAvailable, setMicAvailable] = useState(true);
+	const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
 	const { t } = useTranslation();
 	const { toast } = useToast();
@@ -345,7 +357,10 @@ export function SystemAudioRecorder({
 			}
 
 			// Step 4: Create MediaRecorder directly
-			const recorder = new MediaRecorder(streamToRecord);
+			const mimeType = getSupportedAudioMimeType();
+			const recorder = mimeType
+				? new MediaRecorder(streamToRecord, { mimeType })
+				: new MediaRecorder(streamToRecord);
 			recordingChunksRef.current = [];
 
 			recorder.ondataavailable = (e) => {
@@ -355,9 +370,8 @@ export function SystemAudioRecorder({
 			};
 
 			recorder.onstop = () => {
-				const blob = new Blob(recordingChunksRef.current, {
-					type: recordingChunksRef.current[0]?.type || 'audio/webm'
-				});
+				const actualType = recordingChunksRef.current[0]?.type || mimeType || 'audio/webm';
+				const blob = new Blob(recordingChunksRef.current, { type: actualType });
 				setRecordedBlob(blob);
 				setIsRecording(false);
 			};
@@ -462,7 +476,7 @@ export function SystemAudioRecorder({
 		}
 	};
 
-	// Handle dialog close
+	// Perform the actual teardown and close
 	const handleClose = () => {
 		if (isRecording) {
 			stopRecording();
@@ -475,6 +489,15 @@ export function SystemAudioRecorder({
 		setPermissionDenied(false);
 		setCompatibilityError(null);
 		onClose();
+	};
+
+	// Guard close: show confirm when a recording is in progress
+	const requestClose = () => {
+		if (isRecording) {
+			setShowDiscardConfirm(true);
+		} else {
+			handleClose();
+		}
 	};
 
 	// Don't render anything if there's a compatibility error - show it in a separate dialog
@@ -637,7 +660,20 @@ export function SystemAudioRecorder({
 	// Render active recording state
 	if (isRecording) {
 		return (
-			<Dialog open={isOpen} onOpenChange={handleClose}>
+			<>
+			<AlertDialog open={showDiscardConfirm} onOpenChange={setShowDiscardConfirm}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>{t('recorder.discardTitle')}</AlertDialogTitle>
+						<AlertDialogDescription>{t('recorder.discardDescription')}</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>{t('recorder.discardCancel')}</AlertDialogCancel>
+						<AlertDialogAction onClick={handleClose}>{t('recorder.discardConfirm')}</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+			<Dialog open={isOpen} onOpenChange={(open) => { if (!open) requestClose(); }}>
 				<DialogContent className="sm:max-w-[700px]">
 					<DialogHeader>
 						<DialogTitle className="flex items-center gap-2">
@@ -729,6 +765,7 @@ export function SystemAudioRecorder({
 					</div>
 				</DialogContent>
 			</Dialog>
+			</>
 		);
 	}
 

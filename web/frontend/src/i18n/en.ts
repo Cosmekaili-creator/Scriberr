@@ -217,6 +217,13 @@ export const en: Record<string, string> = {
   'settings.summary.table.deleteConfirm': 'Are you sure you want to delete "{name}"?',
   'settings.summary.table.delete': 'Delete',
 
+  // Settings - Summary default template
+  'settings.summary.default.title': 'Default Template',
+  'settings.summary.default.desc': 'This template will be pre-selected when you open the Summarize dialog.',
+  'settings.summary.default.select': 'Select a default template',
+  'settings.summary.default.none': 'None (no default)',
+  'settings.summary.default.saved': 'Default template saved',
+
   // Settings - Page
   'settings.page.title': 'Settings',
   'settings.page.description': 'Manage your account settings and transcription profiles.',
@@ -496,6 +503,10 @@ export const en: Record<string, string> = {
   'recorder.uploading': 'Uploading...',
   'recorder.upload': 'Upload Recording',
   'recorder.completed': '✓ Recording completed! Review and upload when ready.',
+  'recorder.discardTitle': 'Discard recording?',
+  'recorder.discardDescription': 'The recording in progress will be lost. This cannot be undone.',
+  'recorder.discardConfirm': 'Discard',
+  'recorder.discardCancel': 'Keep recording',
 
   // System Audio Recorder
   'recorder.system.title': 'Record System Audio',
@@ -823,6 +834,8 @@ export const en: Record<string, string> = {
   'transcription.config.languageDesc': 'Language of the audio content',
   'transcription.config.multiTrackTitle': 'Multi-Track Audio',
   'transcription.config.multiTrackDesc': 'This job contains multiple audio tracks. Each track will be transcribed separately and merged with speaker labels.',
+  'transcription.config.multiTrackEnabled': 'Multi-track transcription',
+  'transcription.config.multiTrackEnabledHelp': 'Enable support for multi-track audio files. Incompatible with speaker diarization.',
   'transcription.config.paramDesc.batch_size': 'Number of audio segments processed simultaneously. Higher values use more memory but may be faster.',
   'transcription.config.paramDesc.beam_size': 'Beam search width. Higher values improve accuracy but increase processing time.',
   'transcription.config.paramDesc.compute_type': 'Numerical precision for model inference. Lower precision is faster but may reduce accuracy.',

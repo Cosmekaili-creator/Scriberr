@@ -35,6 +35,7 @@ export const EmberPlayer = forwardRef<EmberPlayerRef, EmberPlayerProps>(
         // --- 1. Parent Control (ForwardRef) ---
         useImperativeHandle(ref, () => ({
             seekTo: (time: number) => {
+                if (!Number.isFinite(time) || time < 0) return;
                 if (audioRef.current) {
                     audioRef.current.currentTime = time;
                     setCurrentTime(time);
@@ -90,7 +91,7 @@ export const EmberPlayer = forwardRef<EmberPlayerRef, EmberPlayerProps>(
         const handleScrubberMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
             setIsDragging(true);
             const time = calculateTimeFromEvent(e);
-            if (audioRef.current) {
+            if (audioRef.current && Number.isFinite(time) && time >= 0) {
                 audioRef.current.currentTime = time;
                 setCurrentTime(time);
             }
@@ -101,8 +102,10 @@ export const EmberPlayer = forwardRef<EmberPlayerRef, EmberPlayerProps>(
             const handleGlobalMouseMove = (e: MouseEvent) => {
                 if (isDragging && audioRef.current && progressRef.current) {
                     const time = calculateTimeFromEvent(e);
-                    audioRef.current.currentTime = time;
-                    setCurrentTime(time);
+                    if (Number.isFinite(time) && time >= 0) {
+                        audioRef.current.currentTime = time;
+                        setCurrentTime(time);
+                    }
                 }
             };
 

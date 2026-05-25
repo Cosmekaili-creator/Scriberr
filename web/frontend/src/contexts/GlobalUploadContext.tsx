@@ -229,7 +229,8 @@ export function GlobalUploadProvider({ children }: PropsWithChildren) {
 
     const handleRecordingComplete = useCallback(
         async (blob: Blob, title: string) => {
-            const file = new File([blob], `${title}.webm`, { type: blob.type });
+            const ext = blob.type.includes('mp4') ? 'mp4' : blob.type.includes('ogg') ? 'ogg' : 'webm';
+            const file = new File([blob], `${title}.${ext}`, { type: blob.type });
             await handleFileSelect(file);
         },
         [handleFileSelect]

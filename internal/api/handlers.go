@@ -407,7 +407,7 @@ func (h *Handler) UploadVideo(c *gin.Context) {
 
 	// Extract audio using ffmpeg (keep this logic here for now, or move to a MediaService)
 	audioPath := strings.TrimSuffix(videoPath, filepath.Ext(videoPath)) + ".mp3"
-	cmd := exec.Command("ffmpeg", "-i", videoPath, "-vn", "-acodec", "libmp3lame", "-q:a", "2", audioPath)
+	cmd := exec.Command("ffmpeg", "-i", videoPath, "-vn", "-af", "loudnorm", "-acodec", "libmp3lame", "-q:a", "2", audioPath)
 	if err := cmd.Run(); err != nil {
 		_ = h.fileService.RemoveFile(videoPath)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to extract audio from video"})
@@ -535,6 +535,7 @@ func (h *Handler) UploadMultiTrack(c *gin.Context) {
 	// Create job record
 	job := models.TranscriptionJob{
 		ID:              jobID,
+		AudioPath:       jobDir,
 		Status:          models.StatusUploaded,
 		IsMultiTrack:    true,
 		MultiTrackFiles: trackFiles,
@@ -553,6 +554,8 @@ func (h *Handler) UploadMultiTrack(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create job"})
 		return
 	}
+
+	c.JSON(http.StatusOK, job)
 }
 
 // @Summary Get multi-track merge status
@@ -2803,6 +2806,7 @@ func (h *Handler) SetUserDefaultProfile(c *gin.Context) {
 type UserSettingsResponse struct {
 	AutoTranscriptionEnabled bool    `json:"auto_transcription_enabled"`
 	DefaultProfileID         *string `json:"default_profile_id,omitempty"`
+	DefaultSummaryTemplateID *string `json:"default_summary_template_id,omitempty"`
 	Language                 string  `json:"language"`
 }
 
@@ -2810,6 +2814,7 @@ type UserSettingsResponse struct {
 type UpdateUserSettingsRequest struct {
 	AutoTranscriptionEnabled *bool   `json:"auto_transcription_enabled,omitempty"`
 	Language                 *string `json:"language,omitempty"`
+	DefaultSummaryTemplateID *string `json:"default_summary_template_id,omitempty"`
 }
 
 // @Summary Get user settings
@@ -2837,6 +2842,7 @@ func (h *Handler) GetUserSettings(c *gin.Context) {
 	response := UserSettingsResponse{
 		AutoTranscriptionEnabled: user.AutoTranscriptionEnabled,
 		DefaultProfileID:         user.DefaultProfileID,
+		DefaultSummaryTemplateID: user.DefaultSummaryTemplateID,
 		Language:                 user.Language,
 	}
 
@@ -2881,6 +2887,13 @@ func (h *Handler) UpdateUserSettings(c *gin.Context) {
 	if req.Language != nil {
 		user.Language = *req.Language
 	}
+	if req.DefaultSummaryTemplateID != nil {
+		if *req.DefaultSummaryTemplateID == "" {
+			user.DefaultSummaryTemplateID = nil
+		} else {
+			user.DefaultSummaryTemplateID = req.DefaultSummaryTemplateID
+		}
+	}
 
 	// Save updated user
 	if err := h.userRepo.Update(c.Request.Context(), user); err != nil {
@@ -2891,6 +2904,7 @@ func (h *Handler) UpdateUserSettings(c *gin.Context) {
 	response := UserSettingsResponse{
 		AutoTranscriptionEnabled: user.AutoTranscriptionEnabled,
 		DefaultProfileID:         user.DefaultProfileID,
+		DefaultSummaryTemplateID: user.DefaultSummaryTemplateID,
 		Language:                 user.Language,
 	}
 

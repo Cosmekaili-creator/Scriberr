@@ -199,18 +199,25 @@ export function SelectField({ label, description, optional, value, onValueChange
 /**
  * SwitchField - Switch toggle with label in a consistent layout.
  */
-export function SwitchField({ id, label, checked, onCheckedChange }: {
+export function SwitchField({ id, label, checked, onCheckedChange, description, disabled }: {
     id: string;
     label: string;
     checked: boolean;
     onCheckedChange: (checked: boolean) => void;
+    description?: string;
+    disabled?: boolean;
 }) {
     return (
-        <div className="flex items-center gap-3">
-            <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
-            <label htmlFor={id} className="text-sm text-[var(--text-primary)] cursor-pointer">
-                {label}
-            </label>
+        <div className="flex items-start gap-3">
+            <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} className="mt-0.5" />
+            <div>
+                <label htmlFor={id} className={`text-sm text-[var(--text-primary)] ${disabled ? 'opacity-60' : 'cursor-pointer'}`}>
+                    {label}
+                </label>
+                {description && (
+                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">{description}</p>
+                )}
+            </div>
         </div>
     );
 }

@@ -9,6 +9,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Header } from "@/components/Header";
 import { ProfileSettings } from "../components/ProfileSettings";
 import { AccountSettings } from "../components/AccountSettings";
@@ -19,6 +20,7 @@ import { SummaryTemplatesTable } from "../components/SummaryTemplatesTable";
 import { CLISettingsTab } from "../components/CLISettingsTab";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useTranslation } from "@/i18n";
+import { useSummaryTemplates } from "@/features/transcription/hooks/useTranscriptionSummary";
 
 export function Settings() {
   const [activeTab, setActiveTab] = useState("transcription");
@@ -29,6 +31,9 @@ export function Settings() {
   const [editingSummary, setEditingSummary] = useState<SummaryTemplate | null>(null);
   const [summaryRefresh, setSummaryRefresh] = useState(0);
   const [llmConfigured, setLlmConfigured] = useState(false);
+  const [defaultTemplateId, setDefaultTemplateId] = useState<string>("");
+  const [savingDefault, setSavingDefault] = useState(false);
+  const { data: summaryTemplates = [] } = useSummaryTemplates();
 
   // Fetch LLM config and models
   useEffect(() => {
@@ -48,6 +53,34 @@ export function Settings() {
     };
     fetchLLM();
   }, [activeTab, getAuthHeaders]);
+
+  // Fetch default summary template from user settings
+  useEffect(() => {
+    const fetchUserSettings = async () => {
+      try {
+        const res = await fetch('/api/v1/user/settings', { headers: { ...getAuthHeaders() } });
+        if (res.ok) {
+          const data = await res.json();
+          setDefaultTemplateId(data.default_summary_template_id || "");
+        }
+      } catch { /* ignore */ }
+    };
+    fetchUserSettings();
+  }, [getAuthHeaders]);
+
+  const handleSaveDefaultTemplate = async (templateId: string) => {
+    setSavingDefault(true);
+    try {
+      await fetch('/api/v1/user/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ default_summary_template_id: templateId }),
+      });
+      setDefaultTemplateId(templateId);
+    } finally {
+      setSavingDefault(false);
+    }
+  };
 
   return (
     <MainLayout
@@ -143,6 +176,30 @@ export function Settings() {
 
           {/* Summary Tab */}
           <TabsContent value="summary" className="space-y-6">
+            {/* Default Template Selector */}
+            <div className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-[var(--radius-card)] p-4 sm:p-6 shadow-sm">
+              <div className="mb-4">
+                <h3 className="text-lg font-medium text-[var(--text-primary)]">{t('settings.summary.default.title')}</h3>
+                <p className="text-sm text-[var(--text-secondary)] mt-1">{t('settings.summary.default.desc')}</p>
+              </div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <div className="flex-1 w-full">
+                  <Label className="sr-only">{t('settings.summary.default.title')}</Label>
+                  <select
+                    value={defaultTemplateId}
+                    onChange={(e) => handleSaveDefaultTemplate(e.target.value)}
+                    disabled={!llmConfigured || savingDefault || summaryTemplates.length === 0}
+                    className="w-full h-10 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-main)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-solid)]/20 focus:border-[var(--brand-solid)] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">{t('settings.summary.default.none')}</option>
+                    {summaryTemplates.map(tpl => (
+                      <option key={tpl.id} value={tpl.id}>{tpl.name}{tpl.model ? ` (${tpl.model})` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-[var(--radius-card)] p-4 sm:p-6 shadow-sm">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4">
                 <div>

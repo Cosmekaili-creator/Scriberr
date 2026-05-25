@@ -37,12 +37,7 @@ import { TranscribeDDialog } from "@/components/TranscribeDDialog";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useAudioListInfinite, type AudioFile } from "@/features/transcription/hooks/useAudioFiles";
-import { useTranscriptionEvents } from "@/features/transcription/hooks/useTranscriptionEvents";
-
-const JobStatusMonitor = memo(function JobStatusMonitor({ jobId }: { jobId: string }) {
-	useTranscriptionEvents(jobId);
-	return null;
-});
+import { useGlobalTranscriptionEvents } from "@/features/transcription/hooks/useTranscriptionEvents";
 
 
 import { DebouncedSearchInput } from "@/components/DebouncedSearchInput";
@@ -87,13 +82,9 @@ export const AudioFilesTable = memo(function AudioFilesTable({
 		sortOrder: sorting[0]?.desc ? 'desc' : 'asc'
 	});
 
-	// Get active jobs for real-time monitoring
-	const activeJobs = useMemo(() => {
-		if (!infiniteData) return [];
-		return infiniteData.pages.flatMap(page => page.jobs).filter(
-			job => job.status === 'processing' || job.status === 'pending'
-		);
-	}, [infiniteData]);
+	// Single global SSE connection — avoids the HTTP/1.1 6-connection limit that
+	// occurred when each active job opened its own connection.
+	useGlobalTranscriptionEvents();
 
 	// Flatten data from pages
 	const data = useMemo(() => {
@@ -1084,10 +1075,6 @@ export const AudioFilesTable = memo(function AudioFilesTable({
 				</AlertDialogContent>
 			</AlertDialog>
 
-			{/* Active Job Monitors */}
-			{activeJobs.map(job => (
-				<JobStatusMonitor key={job.id} jobId={job.id} />
-			))}
 		</div >
 	);
 });

@@ -33,6 +33,7 @@ import { useTranscript, useAudioDetail, type Transcript } from "@/features/trans
 import { useSpeakerMappings } from "@/features/transcription/hooks/useTranscriptionSpeakers";
 import { Sparkles, Download, Copy, RefreshCw, ChevronDown, FileText } from "lucide-react";
 import { useTranslation } from "@/i18n";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 
 // Helper function to format transcript with speaker labels
 function formatTranscriptWithSpeakers(
@@ -61,6 +62,7 @@ interface SummaryDialogProps {
 export function SummaryDialog({ audioId, isOpen, onClose, llmReady }: SummaryDialogProps) {
     const { toast } = useToast();
     const { t } = useTranslation();
+    const { getAuthHeaders } = useAuth();
     const { data: templates = [], isLoading: templatesLoading } = useSummaryTemplates();
     const { data: existingSummary, isLoading: summaryLoading } = useExistingSummary(audioId);
     const { data: transcript } = useTranscript(audioId, true);
@@ -84,6 +86,25 @@ export function SummaryDialog({ audioId, isOpen, onClose, llmReady }: SummaryDia
             setShowOutput(true);
         }
     }, [isOpen, existingSummary, summaryLoading, isStreaming, streamContent]);
+
+    // Pre-select default template when dialog opens and templates are loaded
+    useEffect(() => {
+        if (!isOpen || templatesLoading || templates.length === 0) return;
+        const applyDefault = async () => {
+            try {
+                const res = await fetch('/api/v1/user/settings', { headers: getAuthHeaders() });
+                if (res.ok) {
+                    const settings = await res.json();
+                    const defaultId = settings.default_summary_template_id;
+                    if (defaultId && templates.some(tpl => tpl.id === defaultId)) {
+                        setSelectedTemplateId(defaultId);
+                        return;
+                    }
+                }
+            } catch { /* ignore */ }
+        };
+        applyDefault();
+    }, [isOpen, templates, templatesLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Reset state when dialog closes
     useEffect(() => {

@@ -13,15 +13,16 @@ interface JobUpdateEvent {
     };
 }
 
-export const useTranscriptionEvents = (jobId: string | null) => {
+// Shared SSE connection logic. Pass jobId=null to open a global wildcard connection
+// (receives events for all jobs). Pass a specific jobId to subscribe to one job only.
+function useSSEConnection(jobId: string | null) {
     const { token } = useAuth();
     const queryClient = useQueryClient();
     const abortControllerRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
-        if (!token || !jobId) return;
+        if (!token) return;
 
-        // Cleanup previous connection if any
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
         }
@@ -29,9 +30,12 @@ export const useTranscriptionEvents = (jobId: string | null) => {
         const abortController = new AbortController();
         abortControllerRef.current = abortController;
 
+        // null or undefined jobId → global wildcard connection (no query param)
+        const url = jobId ? `/api/v1/events?job_id=${jobId}` : '/api/v1/events';
+
         const connect = async () => {
             try {
-                const response = await fetch(`/api/v1/events?job_id=${jobId}`, {
+                const response = await fetch(url, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
@@ -58,12 +62,11 @@ export const useTranscriptionEvents = (jobId: string | null) => {
                     buffer += chunk;
 
                     const lines = buffer.split('\n\n');
-                    // Keep the last partial line in buffer
                     buffer = lines.pop() || '';
 
                     for (const line of lines) {
                         const trimmed = line.trim();
-                        if (!trimmed || trimmed.startsWith(':')) continue; // Skip comments/keepalives
+                        if (!trimmed || trimmed.startsWith(':')) continue;
 
                         if (trimmed.startsWith('data: ')) {
                             const data = trimmed.slice(6);
@@ -78,7 +81,6 @@ export const useTranscriptionEvents = (jobId: string | null) => {
                 }
             } catch (error) {
                 if ((error as Error).name !== 'AbortError') {
-                    // Ignore "Error in input stream" which happens on abort/close in some browsers
                     const errorMsg = (error as Error).message;
                     if (!errorMsg.includes('Error in input stream')) {
                         console.error('SSE connection error, reconnecting in 5s...', error);
@@ -97,12 +99,10 @@ export const useTranscriptionEvents = (jobId: string | null) => {
             if (event.type === 'job_update') {
                 const payload = event.payload as JobUpdateEvent['payload'];
 
-                // Optimistically update the list
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 queryClient.setQueriesData({ queryKey: ['audioFiles'] }, (oldData: any) => {
                     if (!oldData) return oldData;
 
-                    // Handle generic infinite query structure
                     if (oldData.pages) {
                         return {
                             ...oldData,
@@ -123,7 +123,6 @@ export const useTranscriptionEvents = (jobId: string | null) => {
                         };
                     }
 
-                    // Handle standard query structure (if used elsewhere)
                     if (oldData.jobs) {
                         return {
                             ...oldData,
@@ -151,4 +150,20 @@ export const useTranscriptionEvents = (jobId: string | null) => {
             abortController.abort();
         };
     }, [token, queryClient, jobId]);
+}
+
+/**
+ * Opens a single global SSE connection that receives events for ALL jobs.
+ * Use this instead of useTranscriptionEvents to avoid the HTTP/1.1 6-connection limit.
+ */
+export const useGlobalTranscriptionEvents = () => {
+    useSSEConnection(null);
+};
+
+/**
+ * Opens a per-job SSE connection. Prefer useGlobalTranscriptionEvents when
+ * monitoring multiple concurrent jobs to avoid exhausting the connection pool.
+ */
+export const useTranscriptionEvents = (jobId: string | null) => {
+    useSSEConnection(jobId);
 };

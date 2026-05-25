@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { getSupportedAudioMimeType } from "@/utils/mediaUtils";
 import { useTranslation } from "@/i18n";
 import WaveSurfer from "wavesurfer.js";
 import RecordPlugin from "wavesurfer.js/dist/plugins/record.js";
@@ -21,6 +22,16 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -52,6 +63,7 @@ export function AudioRecorder({
 	const [selectedDevice, setSelectedDevice] = useState("");
 	const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
 	const [isUploading, setIsUploading] = useState(false);
+	const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
 	const micContainerRef = useRef<HTMLDivElement>(null);
 
@@ -101,8 +113,7 @@ export function AudioRecorder({
 						scrollingWaveform: true,
 						continuousWaveform: true,
 						continuousWaveformDuration: 30,
-						// Let browser choose the best MIME type and bitrate
-						// Add timeslice for better Safari compatibility
+						mimeType: getSupportedAudioMimeType() || undefined,
 						mediaRecorderTimeslice: 1000,
 					}),
 				);
@@ -273,7 +284,7 @@ export function AudioRecorder({
 		}
 	};
 
-	// Handle dialog close
+	// Perform the actual teardown and close
 	const handleClose = () => {
 		if (isRecording) {
 			stopRecording();
@@ -286,8 +297,30 @@ export function AudioRecorder({
 		onClose();
 	};
 
+	// Guard close: show confirm when a recording is in progress
+	const requestClose = () => {
+		if (isRecording) {
+			setShowDiscardConfirm(true);
+		} else {
+			handleClose();
+		}
+	};
+
 	return (
-		<Dialog open={isOpen} onOpenChange={handleClose}>
+		<>
+		<AlertDialog open={showDiscardConfirm} onOpenChange={setShowDiscardConfirm}>
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>{t('recorder.discardTitle')}</AlertDialogTitle>
+					<AlertDialogDescription>{t('recorder.discardDescription')}</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel>{t('recorder.discardCancel')}</AlertDialogCancel>
+					<AlertDialogAction onClick={handleClose}>{t('recorder.discardConfirm')}</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
+		<Dialog open={isOpen} onOpenChange={(open) => { if (!open) requestClose(); }}>
 			<DialogContent className="sm:max-w-[600px] bg-white dark:bg-carbon-800 border-carbon-200 dark:border-carbon-700">
 				<DialogHeader>
 					<DialogTitle className="text-carbon-900 dark:text-carbon-100 text-xl font-bold">
@@ -492,5 +525,6 @@ export function AudioRecorder({
 				</div>
 			</DialogContent>
 		</Dialog>
+		</>
 	);
 }

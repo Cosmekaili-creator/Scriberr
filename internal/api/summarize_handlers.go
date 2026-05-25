@@ -48,8 +48,13 @@ func (h *Handler) Summarize(c *gin.Context) {
 		return
 	}
 
-	// Prepare chat messages: simple single-user message with full content
+	// Prepare chat messages; prepend system prompt from template if provided
 	messages := []llm.ChatMessage{{Role: "user", Content: req.Content}}
+	if req.TemplateID != nil && *req.TemplateID != "" {
+		if tmpl, err := h.summaryRepo.FindByID(c.Request.Context(), *req.TemplateID); err == nil && tmpl.Prompt != "" {
+			messages = append([]llm.ChatMessage{{Role: "system", Content: tmpl.Prompt}}, messages...)
+		}
+	}
 
 	start := time.Now()
 	log.Printf("[summarize] start transcription_id=%s provider=%s model=%s content_len=%d", req.TranscriptionID, provider, req.Model, len(req.Content))
