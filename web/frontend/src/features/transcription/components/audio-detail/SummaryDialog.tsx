@@ -32,6 +32,7 @@ import { useSummaryTemplates, useSummarizer, useExistingSummary } from "@/featur
 import { useTranscript, useAudioDetail, type Transcript } from "@/features/transcription/hooks/useAudioDetail";
 import { useSpeakerMappings } from "@/features/transcription/hooks/useTranscriptionSpeakers";
 import { Sparkles, Download, Copy, RefreshCw, ChevronDown, FileText } from "lucide-react";
+import { useTranslation } from "@/i18n";
 
 // Helper function to format transcript with speaker labels
 function formatTranscriptWithSpeakers(
@@ -59,6 +60,7 @@ interface SummaryDialogProps {
 
 export function SummaryDialog({ audioId, isOpen, onClose, llmReady }: SummaryDialogProps) {
     const { toast } = useToast();
+    const { t } = useTranslation();
     const { data: templates = [], isLoading: templatesLoading } = useSummaryTemplates();
     const { data: existingSummary, isLoading: summaryLoading } = useExistingSummary(audioId);
     const { data: transcript } = useTranscript(audioId, true);
@@ -107,7 +109,7 @@ export function SummaryDialog({ audioId, isOpen, onClose, llmReady }: SummaryDia
         const content = streamContent || existingSummary?.content || "";
         if (content) {
             await navigator.clipboard.writeText(content);
-            toast({ title: 'Copied to clipboard' });
+            toast({ title: t('detail.summary.copiedToClipboard') });
         }
     };
 
@@ -148,12 +150,12 @@ export function SummaryDialog({ audioId, isOpen, onClose, llmReady }: SummaryDia
                             <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#FFAB40] to-[#FF6D20] flex items-center justify-center shadow-md">
                                 <Sparkles className="h-4 w-4 text-white" />
                             </div>
-                            Summary
+                            {t('detail.summary.title')}
                         </DialogTitle>
                         <DialogDescription className="flex items-center gap-2 text-[var(--text-secondary)] mt-1">
                             {isStreaming ? (
                                 <>
-                                    <span>Generating summary</span>
+                                    <span>{t('detail.summary.generating')}</span>
                                     <span className="flex gap-1">
                                         <span className="w-1.5 h-1.5 bg-[var(--brand-solid)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                                         <span className="w-1.5 h-1.5 bg-[var(--brand-solid)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -161,7 +163,7 @@ export function SummaryDialog({ audioId, isOpen, onClose, llmReady }: SummaryDia
                                     </span>
                                 </>
                             ) : (
-                                <span>{error ? 'Generation failed' : 'Summary ready'}</span>
+                                <span>{error ? t('detail.summary.failed') : t('detail.summary.ready')}</span>
                             )}
                         </DialogDescription>
                     </DialogHeader>
@@ -180,7 +182,7 @@ export function SummaryDialog({ audioId, isOpen, onClose, llmReady }: SummaryDia
                                 className="h-9 rounded-full border-[rgba(0,0,0,0.06)] dark:border-[rgba(255,255,255,0.08)] hover:bg-[var(--bg-main)] transition-all"
                             >
                                 <RefreshCw className="h-3.5 w-3.5" />
-                                Regenerate
+                                {t('detail.summary.regenerate')}
                             </Button>
                             <Button
                                 variant="outline"
@@ -190,7 +192,7 @@ export function SummaryDialog({ audioId, isOpen, onClose, llmReady }: SummaryDia
                                 className="h-9 rounded-full border-[rgba(0,0,0,0.06)] dark:border-[rgba(255,255,255,0.08)] hover:bg-[var(--bg-main)] transition-all"
                             >
                                 <Copy className="h-3.5 w-3.5" />
-                                Copy
+                                {t('detail.summary.copy')}
                             </Button>
                             <Button
                                 variant="outline"
@@ -200,7 +202,7 @@ export function SummaryDialog({ audioId, isOpen, onClose, llmReady }: SummaryDia
                                 className="h-9 rounded-full border-[rgba(0,0,0,0.06)] dark:border-[rgba(255,255,255,0.08)] hover:bg-[var(--bg-main)] transition-all"
                             >
                                 <Download className="h-3.5 w-3.5" />
-                                Download
+                                {t('detail.summary.download')}
                             </Button>
                         </div>
 
@@ -216,8 +218,8 @@ export function SummaryDialog({ audioId, isOpen, onClose, llmReady }: SummaryDia
                                         <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[var(--brand-solid)] animate-spin"></div>
                                         <Sparkles className="absolute inset-0 m-auto h-5 w-5 text-[var(--brand-solid)] animate-pulse" />
                                     </div>
-                                    <p className="text-sm font-medium">Generating summary...</p>
-                                    <p className="text-xs mt-1">This may take a moment</p>
+                                    <p className="text-sm font-medium">{t('detail.summary.generatingLong')}</p>
+                                    <p className="text-xs mt-1">{t('detail.summary.generatingHint')}</p>
                                 </div>
                             ) : (
                                 <div className="prose prose-stone dark:prose-invert max-w-none text-[#171717] dark:text-[#EDEDED] leading-relaxed">
@@ -243,7 +245,7 @@ export function SummaryDialog({ audioId, isOpen, onClose, llmReady }: SummaryDia
                                 </div>
                             )}
                             {!error && !streamContent && !existingSummary?.content && !isStreaming && (
-                                <p className="text-sm text-[var(--text-tertiary)] italic text-center py-8">No content to display.</p>
+                                <p className="text-sm text-[var(--text-tertiary)] italic text-center py-8">{t('detail.summary.noContent')}</p>
                             )}
                         </div>
                     </div>
@@ -269,10 +271,10 @@ export function SummaryDialog({ audioId, isOpen, onClose, llmReady }: SummaryDia
                         <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#FFAB40] to-[#FF6D20] flex items-center justify-center shadow-md">
                             <FileText className="h-4 w-4 text-white" />
                         </div>
-                        Summarize Transcript
+                        {t('detail.summary.summarizeTitle')}
                     </DialogTitle>
                     <DialogDescription className="text-[var(--text-tertiary)] mt-1">
-                        Choose a summarization template to generate insights
+                        {t('detail.summary.selectDesc')}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -280,21 +282,21 @@ export function SummaryDialog({ audioId, isOpen, onClose, llmReady }: SummaryDia
                     {llmReady === false && (
                         <div className="p-4 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-xl text-sm flex items-center gap-2">
                             <span className="h-2 w-2 bg-amber-500 rounded-full animate-pulse" />
-                            LLM is not configured or active. Please check settings.
+                            {t('detail.summary.llmNotConfigured')}
                         </div>
                     )}
 
                     <div className="space-y-2">
-                        <Label className="text-sm font-medium text-[var(--text-secondary)]">Template</Label>
+                        <Label className="text-sm font-medium text-[var(--text-secondary)]">{t('detail.summary.templateLabel')}</Label>
                         <Popover open={tplPopoverOpen} onOpenChange={setTplPopoverOpen} modal={true}>
                             <PopoverTrigger asChild>
                                 <button
                                     className="w-full h-11 inline-flex justify-between items-center rounded-xl border border-[rgba(0,0,0,0.06)] dark:border-[rgba(255,255,255,0.08)] bg-[var(--bg-main)] dark:bg-[#141414] px-4 text-sm text-[var(--text-primary)] hover:border-[var(--brand-solid)]/50 focus:ring-2 focus:ring-[var(--brand-solid)]/20 transition-all outline-none disabled:opacity-50 shadow-[0_2px_4px_rgba(0,0,0,0.04)]"
-                                    aria-label="Choose template"
+                                    aria-label={t('detail.summary.selectTemplate')}
                                     disabled={!llmReady}
                                     type="button"
                                 >
-                                    <span className="truncate text-left">{selectedTemplate ? selectedTemplate.name : (templatesLoading ? 'Loading...' : 'Select a template')}</span>
+                                    <span className="truncate text-left">{selectedTemplate ? selectedTemplate.name : (templatesLoading ? t('detail.summary.loading') : t('detail.summary.selectTemplate'))}</span>
                                     <span className="flex items-center text-xs text-[var(--text-tertiary)] ml-2 shrink-0">
                                         {selectedTemplate?.model ? `(${selectedTemplate.model})` : ''}
                                         <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
@@ -306,20 +308,20 @@ export function SummaryDialog({ audioId, isOpen, onClose, llmReady }: SummaryDia
                                 onOpenAutoFocus={(e) => e.preventDefault()}
                             >
                                 <Command className="bg-transparent">
-                                    <CommandInput placeholder="Search templates..." className="border-none focus:ring-0 h-10" />
+                                    <CommandInput placeholder={t('detail.summary.searchTemplates')} className="border-none focus:ring-0 h-10" />
                                     <CommandList className="max-h-64 overflow-auto p-1">
-                                        <CommandEmpty className="py-3 text-center text-xs text-[var(--text-tertiary)]">{templatesLoading ? 'Loading...' : 'No templates found'}</CommandEmpty>
-                                        <CommandGroup heading="Templates" className="text-[var(--text-tertiary)]">
-                                            {templates.map(t => (
+                                        <CommandEmpty className="py-3 text-center text-xs text-[var(--text-tertiary)]">{templatesLoading ? t('detail.summary.loading') : t('detail.summary.noTemplates')}</CommandEmpty>
+                                        <CommandGroup heading={t('detail.summary.templatesGroup')} className="text-[var(--text-tertiary)]">
+                                            {templates.map(tmpl => (
                                                 <CommandItem
-                                                    key={t.id}
-                                                    value={t.name}
-                                                    onSelect={() => { setSelectedTemplateId(t.id); setTplPopoverOpen(false); }}
+                                                    key={tmpl.id}
+                                                    value={tmpl.name}
+                                                    onSelect={() => { setSelectedTemplateId(tmpl.id); setTplPopoverOpen(false); }}
                                                     className="rounded-lg py-2.5 px-3 aria-selected:bg-[var(--brand-solid)] aria-selected:text-white cursor-pointer transition-colors"
                                                 >
                                                     <div className="flex flex-col w-full">
-                                                        <span className="text-sm font-medium">{t.name}</span>
-                                                        <span className="text-xs opacity-70">Model: {t.model || '—'}</span>
+                                                        <span className="text-sm font-medium">{tmpl.name}</span>
+                                                        <span className="text-xs opacity-70">{tmpl.model || '—'}</span>
                                                     </div>
                                                 </CommandItem>
                                             ))}
@@ -330,10 +332,10 @@ export function SummaryDialog({ audioId, isOpen, onClose, llmReady }: SummaryDia
                         </Popover>
 
                         {!templatesLoading && templates.length === 0 && (
-                            <p className="text-xs text-[var(--text-tertiary)] pl-1">No templates found. Go to Settings → Summary to create one.</p>
+                            <p className="text-xs text-[var(--text-tertiary)] pl-1">{t('detail.summary.noTemplatesHint')}</p>
                         )}
                         {selectedTemplate && !selectedTemplate.model && (
-                            <p className="text-xs text-[var(--error)] pl-1">Selected template has no model configured.</p>
+                            <p className="text-xs text-[var(--error)] pl-1">{t('detail.summary.noModel')}</p>
                         )}
                     </div>
                 </div>
@@ -344,7 +346,7 @@ export function SummaryDialog({ audioId, isOpen, onClose, llmReady }: SummaryDia
                         onClick={() => onClose(false)}
                         className="h-11 px-6 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-main)] w-full sm:w-auto"
                     >
-                        Cancel
+                        {t('detail.summary.cancel')}
                     </Button>
                     <Button
                         disabled={!selectedTemplateId || !selectedTemplate?.model || !llmReady}
@@ -352,7 +354,7 @@ export function SummaryDialog({ audioId, isOpen, onClose, llmReady }: SummaryDia
                         className="h-11 px-6 bg-gradient-to-br from-[#FFAB40] to-[#FF3D00] text-white hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-md disabled:opacity-50 disabled:cursor-not-allowed rounded-full w-full sm:w-auto"
                     >
                         <Sparkles className="h-4 w-4 mr-2" />
-                        Generate Summary
+                        {t('detail.summary.generate')}
                     </Button>
                 </div>
             </DialogContent>

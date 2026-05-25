@@ -327,6 +327,8 @@ export const en: Record<string, string> = {
   'detail.summary.generatingLong': 'Generating summary...',
   'detail.summary.generatingHint': 'This may take a moment',
   'detail.summary.noContent': 'No content to display.',
+  'detail.summary.copiedToClipboard': 'Copied to clipboard',
+  'detail.summary.templatesGroup': 'Templates',
   'detail.summary.cancel': 'Cancel',
 
   // Notes Editor
