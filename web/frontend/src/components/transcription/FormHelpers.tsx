@@ -56,7 +56,7 @@ interface FormFieldProps {
 
 /**
  * FormField - A consistent wrapper for form inputs with optional tooltip description
- * Follows Scriberr design system
+ * Follows aScribe design system
  */
 export function FormField({ label, htmlFor, description, optional, children }: FormFieldProps) {
     const { t } = useTranslation();

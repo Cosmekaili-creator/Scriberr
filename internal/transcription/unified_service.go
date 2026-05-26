@@ -11,14 +11,14 @@ import (
 	"strings"
 	"time"
 
-	"scriberr/internal/models"
-	"scriberr/internal/repository"
-	"scriberr/internal/sse"
-	"scriberr/internal/transcription/interfaces"
-	"scriberr/internal/transcription/pipeline"
-	"scriberr/internal/transcription/registry"
-	"scriberr/internal/webhook"
-	"scriberr/pkg/logger"
+	"ascribe/internal/models"
+	"ascribe/internal/repository"
+	"ascribe/internal/sse"
+	"ascribe/internal/transcription/interfaces"
+	"ascribe/internal/transcription/pipeline"
+	"ascribe/internal/transcription/registry"
+	"ascribe/internal/webhook"
+	"ascribe/pkg/logger"
 )
 
 const (

@@ -18,8 +18,8 @@ export default defineConfig({
       injectRegister: 'auto',
       includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],
       manifest: {
-        name: 'Scriberr',
-        short_name: 'Scriberr',
+        name: 'aScribe',
+        short_name: 'aScribe',
         description: 'AI-powered audio transcription',
         theme_color: '#FF6D20',
         background_color: '#0a0a0a',
@@ -27,7 +27,7 @@ export default defineConfig({
         orientation: 'portrait',
         start_url: '/',
         scope: '/',
-        id: 'scriberr-transcription',
+        id: 'ascribe-transcription',
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },

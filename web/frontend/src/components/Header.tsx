@@ -7,7 +7,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Upload, Mic, Settings, LogOut, Home, Plus, Grip, Zap, Youtube, Video, Users, MonitorSpeaker, FolderOpen } from "lucide-react";
-import { ScriberrLogo } from "./ScriberrLogo";
+import { AScribeLogo } from "./AScribeLogo";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { AudioRecorder } from "./AudioRecorder";
 import { SystemAudioRecorder } from "./SystemAudioRecorder";
@@ -145,7 +145,7 @@ export function Header({ onFileSelect, onMultiTrackClick, onDownloadComplete }: 
 		<header className="sticky top-4 sm:top-6 z-50 glass rounded-[var(--radius-card)] px-4 py-3 sm:px-6 sm:py-4 transition-all duration-500 shadow-[var(--shadow-float)] border border-[var(--border-subtle)]">
 			<div className="flex items-center justify-between">
 				{/* Left side - Logo navigates home */}
-				<ScriberrLogo onClick={handleHomeClick} />
+				<AScribeLogo onClick={handleHomeClick} />
 
 				{/* Right side - Plus (Add Audio), Grip Menu, Theme Switcher */}
 				<div className="flex items-center gap-2 sm:gap-3">

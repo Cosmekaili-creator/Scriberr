@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"scriberr/pkg/logger"
+	"ascribe/pkg/logger"
 )
 
 // Event represents a Server-Sent Event

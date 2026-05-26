@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"scriberr/internal/llm"
-	"scriberr/internal/models"
+	"ascribe/internal/llm"
+	"ascribe/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"

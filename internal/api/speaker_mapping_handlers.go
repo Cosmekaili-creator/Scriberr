@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	"scriberr/internal/models"
+	"ascribe/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"

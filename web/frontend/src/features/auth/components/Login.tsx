@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScriberrLogo } from "@/components/ScriberrLogo";
+import { AScribeLogo } from "@/components/AScribeLogo";
 import { useNavigate } from "react-router-dom";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { Loader2, AlertCircle } from "lucide-react";
@@ -70,7 +70,7 @@ export function Login({ onLogin }: LoginProps) {
 							className="flex justify-center cursor-pointer transition-transform hover:scale-105 active:scale-95"
 							onClick={() => navigate('/')}
 						>
-							<ScriberrLogo />
+							<AScribeLogo />
 						</div>
 
 						<div className="space-y-2">

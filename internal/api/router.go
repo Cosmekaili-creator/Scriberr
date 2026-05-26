@@ -1,10 +1,10 @@
 package api
 
 import (
-	"scriberr/internal/auth"
-	"scriberr/internal/web"
-	"scriberr/pkg/logger"
-	"scriberr/pkg/middleware"
+	"ascribe/internal/auth"
+	"ascribe/internal/web"
+	"ascribe/pkg/logger"
+	"ascribe/pkg/middleware"
 
 	"github.com/gin-gonic/gin"
 )

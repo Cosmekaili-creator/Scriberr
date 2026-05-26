@@ -1,10 +1,10 @@
 services:
-  scriberr:
-    image: ghcr.io/rishikanthc/scriberr:latest
+  ascribe:
+    image: ascribe:latest
     ports:
       - "8080:8080"
     volumes:
-      - scriberr_data:/app/data
+      - ascribe_data:/app/data
       - env_data:/app/whisperx-env
     environment:
       - PUID=${PUID:-1000}
@@ -16,5 +16,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  scriberr_data: {}
+  ascribe_data: {}
   env_data: {}

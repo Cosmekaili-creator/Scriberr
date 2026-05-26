@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"scriberr/internal/transcription/interfaces"
-	"scriberr/pkg/logger"
+	"ascribe/internal/transcription/interfaces"
+	"ascribe/pkg/logger"
 )
 
 // WhisperXAdapter implements the TranscriptionAdapter interface for WhisperX

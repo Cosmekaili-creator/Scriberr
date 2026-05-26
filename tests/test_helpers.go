@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"scriberr/internal/auth"
-	"scriberr/internal/config"
-	"scriberr/internal/database"
-	"scriberr/internal/models"
+	"ascribe/internal/auth"
+	"ascribe/internal/config"
+	"ascribe/internal/database"
+	"ascribe/internal/models"
 
 	"context"
 	"encoding/json"
@@ -16,7 +16,7 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"scriberr/internal/llm"
+	"ascribe/internal/llm"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"

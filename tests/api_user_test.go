@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"scriberr/internal/api"
-	"scriberr/internal/auth"
-	"scriberr/internal/models"
+	"ascribe/internal/api"
+	"ascribe/internal/auth"
+	"ascribe/internal/models"
 
 	"github.com/stretchr/testify/assert"
 )

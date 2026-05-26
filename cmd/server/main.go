@@ -11,20 +11,20 @@ import (
 	"syscall"
 	"time"
 
-	"scriberr/internal/api"
-	"scriberr/internal/auth"
-	"scriberr/internal/config"
-	"scriberr/internal/database"
-	"scriberr/internal/processing"
-	"scriberr/internal/queue"
-	"scriberr/internal/repository"
-	"scriberr/internal/service"
-	"scriberr/internal/sse"
-	"scriberr/internal/transcription"
-	"scriberr/internal/transcription/adapters"
-	"scriberr/internal/transcription/adapters/cloudprovider"
-	"scriberr/internal/transcription/registry"
-	"scriberr/pkg/logger"
+	"ascribe/internal/api"
+	"ascribe/internal/auth"
+	"ascribe/internal/config"
+	"ascribe/internal/database"
+	"ascribe/internal/processing"
+	"ascribe/internal/queue"
+	"ascribe/internal/repository"
+	"ascribe/internal/service"
+	"ascribe/internal/sse"
+	"ascribe/internal/transcription"
+	"ascribe/internal/transcription/adapters"
+	"ascribe/internal/transcription/adapters/cloudprovider"
+	"ascribe/internal/transcription/registry"
+	"ascribe/pkg/logger"
 )
 
 // Version information (set by GoReleaser)
@@ -34,7 +34,7 @@ var (
 	date    = "unknown"
 )
 
-// @title Scriberr API
+// @title aScribe API
 // @version 1.0
 // @description Audio transcription service using WhisperX
 // @termsOfService http://swagger.io/terms/
@@ -64,7 +64,7 @@ func main() {
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Printf("Scriberr %s\n", version)
+		fmt.Printf("aScribe %s\n", version)
 		fmt.Printf("Commit: %s\n", commit)
 		fmt.Printf("Built: %s\n", date)
 		os.Exit(0)
@@ -72,7 +72,7 @@ func main() {
 
 	// Initialize structured logging first
 	logger.Init(os.Getenv("LOG_LEVEL"))
-	logger.Info("Starting Scriberr", "version", version)
+	logger.Info("Starting aScribe", "version", version)
 
 	// Load configuration
 	logger.Startup("config", "Loading configuration")
@@ -189,7 +189,7 @@ func main() {
 
 	// Give the server a moment to start
 	time.Sleep(100 * time.Millisecond)
-	logger.Info("Scriberr is ready",
+	logger.Info("aScribe is ready",
 		"url", fmt.Sprintf("http://%s:%s", cfg.Host, cfg.Port))
 	logger.Debug("API documentation available at /swagger/index.html")
 

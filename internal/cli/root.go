@@ -8,9 +8,9 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "scriberr",
-	Short: "Scriberr CLI Watcher",
-	Long:  `A CLI tool to watch folders and upload audio files to Scriberr.`,
+	Use:   "ascribe",
+	Short: "aScribe CLI Watcher",
+	Long:  `A CLI tool to watch folders and upload audio files to aScribe.`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -25,5 +25,5 @@ var cfgFile string
 
 func init() {
 	cobra.OnInitialize(InitConfig)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.scriberr.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.ascribe.yaml)")
 }

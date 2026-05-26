@@ -80,7 +80,7 @@ export function CLISettingsTab() {
                         {t('settings.cli.step1Desc')}
                     </p>
                     <div className="bg-[var(--bg-card)] rounded p-3 font-mono text-sm text-[var(--text-primary)] border border-[var(--border-subtle)]">
-                        scriberr login
+                        ascribe login
                     </div>
                 </div>
 
@@ -92,7 +92,7 @@ export function CLISettingsTab() {
                         {t('settings.cli.step2Desc')}
                     </p>
                     <div className="bg-[var(--bg-card)] rounded p-3 font-mono text-sm text-[var(--text-primary)] border border-[var(--border-subtle)]">
-                        scriberr watch ~/Recordings
+                        ascribe watch ~/Recordings
                     </div>
                 </div>
 
@@ -104,8 +104,8 @@ export function CLISettingsTab() {
                         {t('settings.cli.step3Desc')}
                     </p>
                     <div className="bg-[var(--bg-card)] rounded p-3 font-mono text-sm text-[var(--text-primary)] border border-[var(--border-subtle)]">
-                        sudo scriberr install ~/Recordings<br />
-                        sudo scriberr start
+                        sudo ascribe install ~/Recordings<br />
+                        sudo ascribe start
                     </div>
                 </div>
             </div>

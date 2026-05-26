@@ -3,12 +3,12 @@ import { refreshToken, navigateToHome, parseRequestUrl } from './authHelpers';
 import './authTypes';
 
 export function setupAuthInterceptor(): void {
-    if (window.__scriberr_original_fetch) {
+    if (window.__ascribe_original_fetch) {
         return;
     }
 
     const originalFetch = window.fetch.bind(window);
-    window.__scriberr_original_fetch = originalFetch;
+    window.__ascribe_original_fetch = originalFetch;
 
     const wrappedFetch: typeof window.fetch = async (input, init) => {
         const url = parseRequestUrl(input);

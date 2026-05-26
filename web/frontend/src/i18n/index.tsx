@@ -24,7 +24,7 @@ export const LanguageContext = createContext<{
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, _setLanguage] = useState<SupportedLanguage>(() => {
-    const cached = localStorage.getItem('scriberr_language') as SupportedLanguage
+    const cached = localStorage.getItem('ascribe_language') as SupportedLanguage
     return SUPPORTED.includes(cached) ? cached : detectBrowserLanguage()
   })
 
@@ -44,7 +44,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   function _apply(lang: SupportedLanguage) {
     _setLanguage(lang)
-    localStorage.setItem('scriberr_language', lang)
+    localStorage.setItem('ascribe_language', lang)
   }
 
   function setLanguage(lang: SupportedLanguage) {

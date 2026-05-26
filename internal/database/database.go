@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"scriberr/internal/models"
+	"ascribe/internal/models"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"

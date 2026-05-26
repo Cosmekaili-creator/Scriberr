@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"scriberr/internal/models"
+	"ascribe/internal/models"
 	"time"
 
 	"gorm.io/gorm"

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"scriberr/internal/auth"
+	"ascribe/internal/auth"
 
 	"github.com/gin-gonic/gin"
 )
@@ -70,9 +70,9 @@ func SetupStaticRoutes(router *gin.Engine, authService *auth.AuthService) {
 		c.Data(http.StatusOK, "image/svg+xml", fileContent)
 	})
 
-	// Serve scriberr-logo.png
-	router.GET("/scriberr-logo.png", func(c *gin.Context) {
-		fileContent, err := staticFiles.ReadFile("dist/scriberr-logo.png")
+	// Serve ascribe-logo.png
+	router.GET("/ascribe-logo.png", func(c *gin.Context) {
+		fileContent, err := staticFiles.ReadFile("dist/ascribe-logo.png")
 		if err != nil {
 			c.Status(http.StatusNotFound)
 			return
@@ -80,9 +80,9 @@ func SetupStaticRoutes(router *gin.Engine, authService *auth.AuthService) {
 		c.Data(http.StatusOK, "image/png", fileContent)
 	})
 
-	// Serve scriberr-thumb.png
-	router.GET("/scriberr-thumb.png", func(c *gin.Context) {
-		fileContent, err := staticFiles.ReadFile("dist/scriberr-thumb.png")
+	// Serve ascribe-thumb.png
+	router.GET("/ascribe-thumb.png", func(c *gin.Context) {
+		fileContent, err := staticFiles.ReadFile("dist/ascribe-thumb.png")
 		if err != nil {
 			c.Status(http.StatusNotFound)
 			return

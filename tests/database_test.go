@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"scriberr/internal/database"
-	"scriberr/internal/models"
+	"ascribe/internal/database"
+	"ascribe/internal/models"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"

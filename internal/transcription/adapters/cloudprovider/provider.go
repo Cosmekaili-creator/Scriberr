@@ -13,9 +13,9 @@ import (
 	"net/http"
 	"time"
 
-	"scriberr/internal/transcription/adapters"
-	"scriberr/internal/transcription/interfaces"
-	"scriberr/pkg/logger"
+	"ascribe/internal/transcription/adapters"
+	"ascribe/internal/transcription/interfaces"
+	"ascribe/pkg/logger"
 )
 
 const (

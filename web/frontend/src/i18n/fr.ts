@@ -13,10 +13,10 @@ export const fr: Record<string, string> = {
   'auth.login.networkError': 'Erreur réseau. Veuillez réessayer.',
 
   // Auth - Register
-  'auth.register.title': 'Bienvenue sur Scriberr',
+  'auth.register.title': 'Bienvenue sur aScribe',
   'auth.register.subtitle': 'Créez votre compte administrateur pour commencer',
   'auth.register.heading': 'Configuration du compte administrateur',
-  'auth.register.description': 'Ce sera le seul compte ayant accès à cette instance de Scriberr',
+  'auth.register.description': "Ce sera le seul compte ayant accès à cette instance d'aScribe",
   'auth.register.username': 'Nom d\'utilisateur',
   'auth.register.password': 'Mot de passe',
   'auth.register.confirmPassword': 'Confirmer le mot de passe',
@@ -34,7 +34,7 @@ export const fr: Record<string, string> = {
   'auth.register.requirementsNotMet': 'Veuillez vous assurer que votre mot de passe respecte toutes les exigences',
   'auth.register.creating': 'Création du compte...',
   'auth.register.submit': 'Créer le compte administrateur',
-  'auth.register.adminNote': 'Ce compte aura un accès administratif complet à votre instance Scriberr',
+  'auth.register.adminNote': 'Ce compte aura un accès administratif complet à votre instance aScribe',
 
   // Auth - CLI
   'auth.cli.notLoggedIn': 'Vous devez être connecté pour autoriser le CLI.',
@@ -140,11 +140,11 @@ export const fr: Record<string, string> = {
 
   // Settings - API Keys
   'settings.apikeys.title': 'Clés API',
-  'settings.apikeys.description': 'Gérez vos clés API pour l\'accès externe à Scriberr.',
+  'settings.apikeys.description': 'Gérez vos clés API pour l\'accès externe à aScribe.',
   'settings.apikeys.createNew': 'Créer une nouvelle clé API',
 
   'settings.apikeys.create.title': 'Créer une nouvelle clé API',
-  'settings.apikeys.create.description': 'Créez une nouvelle clé API pour l\'accès externe à Scriberr. Attribuez-lui un nom descriptif pour vous aider à l\'identifier ultérieurement.',
+  'settings.apikeys.create.description': 'Créez une nouvelle clé API pour l\'accès externe à aScribe. Attribuez-lui un nom descriptif pour vous aider à l\'identifier ultérieurement.',
   'settings.apikeys.create.nameLabel': 'Nom *',
   'settings.apikeys.create.namePlaceholder': 'ex. : Intégration Mon Application',
   'settings.apikeys.create.nameDesc': 'Un nom convivial pour identifier cette clé API',
@@ -182,7 +182,7 @@ export const fr: Record<string, string> = {
 
   // Settings - CLI
   'settings.cli.installation': 'Installation',
-  'settings.cli.installDesc': 'Exécutez cette commande dans votre terminal pour installer le CLI Scriberr.',
+  'settings.cli.installDesc': 'Exécutez cette commande dans votre terminal pour installer le CLI aScribe.',
   'settings.cli.generating': 'Génération de la commande...',
   'settings.cli.copy': 'Copier',
   'settings.cli.copied': 'Copié',

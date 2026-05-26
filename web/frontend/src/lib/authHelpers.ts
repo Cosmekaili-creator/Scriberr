@@ -2,7 +2,7 @@ import { useAuthStore } from '../features/auth/store/authStore';
 import './authTypes';
 
 export async function refreshToken(): Promise<string | null> {
-    const originalFetch = window.__scriberr_original_fetch || window.fetch;
+    const originalFetch = window.__ascribe_original_fetch || window.fetch;
     const state = useAuthStore.getState();
 
     try {

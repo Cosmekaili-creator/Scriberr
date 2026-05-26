@@ -1,15 +1,7 @@
-// import { useTheme } from "@/contexts/ThemeContext";
-import { ScriberrTextLogo } from "./ScriberrTextLogo";
+import { AScribeTextLogo } from "./AScribeTextLogo";
 
-export function ScriberrLogo({ className = "", onClick }: { className?: string; onClick?: () => void }) {
+export function AScribeLogo({ className = "", onClick }: { className?: string; onClick?: () => void }) {
   const clickable = typeof onClick === 'function';
-  // const { theme } = useTheme();
-
-  // Define gradient colors based on theme
-
-  // theme === 'dark'
-  // ? { start: '#FFAB40', end: '#FF3D00' } // Dark mode: electricEmberGradient
-  // : { start: '#FF6D00', end: '#C62828' }; // Light mode: electricLightGradient
 
   return (
     <div
@@ -25,14 +17,13 @@ export function ScriberrLogo({ className = "", onClick }: { className?: string; 
         }
       }}
     >
-      <ScriberrIcon className="h-8 w-auto sm:h-9 select-none transition-all duration-300" />
-      <ScriberrTextLogo className="hidden sm:block sm:h-5 w-auto" />
+      <AScribeIcon className="h-8 w-auto sm:h-9 select-none transition-all duration-300" />
+      <AScribeTextLogo className="hidden sm:block sm:h-5 w-auto" />
     </div>
   )
 }
 
-export function ScriberrIcon({ className = "" }: { className?: string }) {
-  // Define gradient colors based on theme
+export function AScribeIcon({ className = "" }: { className?: string }) {
   const gradientColors = { start: '#FF9800', end: '#FF3D00' };
 
   return (
@@ -44,7 +35,7 @@ export function ScriberrIcon({ className = "" }: { className?: string }) {
       version="1.1"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
-      aria-label="Scriberr Icon"
+      aria-label="aScribe Icon"
     >
       <defs>
         <linearGradient id="dynamicGradient" x1="0%" y1="0%" x2="100%" y2="100%">

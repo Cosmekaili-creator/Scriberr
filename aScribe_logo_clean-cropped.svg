@@ -1,0 +1,16 @@
+<svg role="img" xmlns="http://www.w3.org/2000/svg" style="" viewBox="178.35 60.52 323.3 99.05">
+  <title style="fill:rgb(0, 0, 0);stroke:none;color:rgb(251, 251, 254);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">aScribe logo</title>
+  <desc style="fill:rgb(0, 0, 0);stroke:none;color:rgb(251, 251, 254);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Clean modern typographic logo for aScribe, works in light and dark themes</desc>
+
+  <defs>
+    
+  <mask id="imagine-text-gaps-t3s77y" maskUnits="userSpaceOnUse"><rect x="0" y="0" width="680" height="220" fill="white"/><rect x="-164.64166259765625" y="-50.45000076293945" width="329.2833251953125" height="101" fill="black" rx="2"/></mask></defs>
+
+  <g transform="translate(340, 110)" text-anchor="middle" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(251, 251, 254);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:middle;dominant-baseline:auto">
+
+    <text x="0" y="0" font-family="'Palatino Linotype', 'Palatino', 'Book Antiqua', Georgia, serif" font-size="96" font-weight="400" letter-spacing="2" dominant-baseline="middle" style="fill:rgb(237, 233, 227);stroke:none;color:rgb(251, 251, 254);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Palatino Linotype&quot;, &quot;Palatino&quot;, &quot;Book Antiqua&quot;, Georgia, serif;font-size:96px;font-weight:400;text-anchor:middle;dominant-baseline:middle">aScribe</text>
+
+    <line x1="-114" y1="44" x2="114" y2="44" mask="url(#imagine-text-gaps-t3s77y)" style="fill:rgb(0, 0, 0);stroke:rgb(237, 233, 227);color:rgb(251, 251, 254);stroke-width:0.6px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.25;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:middle;dominant-baseline:auto"/>
+
+  </g>
+</svg>

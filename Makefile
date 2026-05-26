@@ -79,10 +79,10 @@ website-serve: website-build ## Build and preview project website locally
 
 docs-serve: website-serve ## Alias for website-serve
 
-build: ## Build Scriberr binary with embedded frontend
-	@echo "Starting Scriberr build process..."
+build: ## Build aScribe binary with embedded frontend
+	@echo "Starting aScribe build process..."
 	@echo "Cleaning old build files..."
-	@rm -f scriberr
+	@rm -f ascribe
 	@rm -rf internal/web/dist
 	@cd web/frontend && rm -rf dist/ && rm -rf assets/ 2>/dev/null || true
 	@echo "✓ Build files cleaned"
@@ -95,17 +95,17 @@ build: ## Build Scriberr binary with embedded frontend
 	@echo "✓ Assets copied"
 	@echo "Building Go binary..."
 	@go clean -cache
-	@go build -o scriberr cmd/server/main.go
+	@go build -o ascribe cmd/server/main.go
 	@echo "✓ Binary built successfully"
-	@echo "Build complete. Run './scriberr' to start the server"
+	@echo "Build complete. Run './ascribe' to start the server"
 
 build-cli: ## Build CLI binaries for Linux, macOS, and Windows
 	@echo "Building CLI binaries..."
 	@mkdir -p bin/cli
-	GOOS=linux GOARCH=amd64 go build -o bin/cli/scriberr-linux-amd64 ./cmd/scriberr-cli
-	GOOS=darwin GOARCH=amd64 go build -o bin/cli/scriberr-darwin-amd64 ./cmd/scriberr-cli
-	GOOS=darwin GOARCH=arm64 go build -o bin/cli/scriberr-darwin-arm64 ./cmd/scriberr-cli
-	GOOS=windows GOARCH=amd64 go build -o bin/cli/scriberr-windows-amd64.exe ./cmd/scriberr-cli
+	GOOS=linux GOARCH=amd64 go build -o bin/cli/ascribe-linux-amd64 ./cmd/ascribe-cli
+	GOOS=darwin GOARCH=amd64 go build -o bin/cli/ascribe-darwin-amd64 ./cmd/ascribe-cli
+	GOOS=darwin GOARCH=arm64 go build -o bin/cli/ascribe-darwin-arm64 ./cmd/ascribe-cli
+	GOOS=windows GOARCH=amd64 go build -o bin/cli/ascribe-windows-amd64.exe ./cmd/ascribe-cli
 	@echo "✓ CLI binaries built in bin/cli/"
 
 test: ## Run tests using gotestsum (via go tool)

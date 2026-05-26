@@ -12,9 +12,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"scriberr/internal/models"
-	"scriberr/internal/repository"
-	"scriberr/pkg/logger"
+	"ascribe/internal/models"
+	"ascribe/internal/repository"
+	"ascribe/pkg/logger"
 )
 
 // RunningJob tracks both context cancellation and OS process

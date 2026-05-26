@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"scriberr/internal/config"
-	"scriberr/internal/models"
-	"scriberr/internal/repository"
+	"ascribe/internal/config"
+	"ascribe/internal/models"
+	"ascribe/internal/repository"
 
 	"github.com/google/uuid"
 )

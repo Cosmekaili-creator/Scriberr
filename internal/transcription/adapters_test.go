@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"scriberr/internal/models"
-	"scriberr/internal/transcription/adapters"
-	"scriberr/internal/transcription/interfaces"
-	"scriberr/internal/transcription/registry"
+	"ascribe/internal/models"
+	"ascribe/internal/transcription/adapters"
+	"ascribe/internal/transcription/interfaces"
+	"ascribe/internal/transcription/registry"
 
 	"github.com/stretchr/testify/mock"
 )

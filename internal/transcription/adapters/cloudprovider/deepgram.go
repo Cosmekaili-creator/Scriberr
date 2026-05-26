@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"scriberr/internal/transcription/interfaces"
+	"ascribe/internal/transcription/interfaces"
 )
 
 const (

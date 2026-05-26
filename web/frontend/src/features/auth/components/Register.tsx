@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScriberrLogo } from "@/components/ScriberrLogo";
+import { AScribeLogo } from "@/components/AScribeLogo";
 import { useNavigate } from "react-router-dom";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { Eye, EyeOff, Check, X } from "lucide-react";
@@ -105,7 +105,7 @@ export function Register({ onRegister }: RegisterProps) {
 			<div className="w-full max-w-md space-y-8">
 				<div className="text-center">
 					<div className="flex justify-center mb-6">
-						<ScriberrLogo onClick={() => navigate('/')} />
+						<AScribeLogo onClick={() => navigate('/')} />
 					</div>
 					<h2 className="text-3xl font-bold text-carbon-900 dark:text-carbon-100">
 						{t('auth.register.title')}

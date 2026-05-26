@@ -9,8 +9,8 @@ import (
 	"os"
 	"time"
 
-	"scriberr/internal/transcription/interfaces"
-	"scriberr/pkg/logger"
+	"ascribe/internal/transcription/interfaces"
+	"ascribe/pkg/logger"
 )
 
 const (

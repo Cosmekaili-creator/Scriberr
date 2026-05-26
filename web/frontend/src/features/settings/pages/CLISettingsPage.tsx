@@ -26,7 +26,7 @@ export function CLISettings() {
                 // Let's use the POST /api/auth/cli/authorize endpoint to generate a token?
                 // That endpoint expects a callback_url.
 
-                // Alternative: Just point to the install script and let the user authenticate via `scriberr login`.
+                // Alternative: Just point to the install script and let the user authenticate via `ascribe login`.
                 // But the user asked for "handle auth as well".
                 // So we need to inject a token.
 
@@ -45,11 +45,11 @@ export function CLISettings() {
                 // Actually, I can use the `POST / api / auth / cli / authorize` but it's designed for the redirect flow.
 
                 // For now, let's just use the install script URL.
-                // If I can't easily get a long-lived token, I'll fall back to `scriberr login`.
+                // If I can't easily get a long-lived token, I'll fall back to `ascribe login`.
                 // But let's try to make it perfect.
 
                 // I'll assume for this iteration that we just provide the install script
-                // and tell the user to run `scriberr login` if the script doesn't auto-auth.
+                // and tell the user to run `ascribe login` if the script doesn't auto-auth.
                 // BUT, the script DOES support auto-auth if `token` param is present.
 
                 // Let's just use the current window location to construct the URL.
@@ -87,7 +87,7 @@ export function CLISettings() {
                             Installation
                         </h2>
                         <p className="text-carbon-600 dark:text-carbon-300 mb-6">
-                            Run this command in your terminal to install the Scriberr CLI. This script will automatically detect your OS and architecture.
+                            Run this command in your terminal to install the aScribe CLI. This script will automatically detect your OS and architecture.
                         </p>
 
                         <div className="relative">
@@ -127,7 +127,7 @@ export function CLISettings() {
                             Link the CLI to your account. This will open your browser for approval.
                         </p>
                         <div className="bg-carbon-100 dark:bg-carbon-900 rounded p-3 font-mono text-sm text-carbon-800 dark:text-carbon-200">
-                            scriberr login
+                            ascribe login
                         </div>
                     </div>
 
@@ -139,7 +139,7 @@ export function CLISettings() {
                             Start watching a directory for new audio files.
                         </p>
                         <div className="bg-carbon-100 dark:bg-carbon-900 rounded p-3 font-mono text-sm text-carbon-800 dark:text-carbon-200">
-                            scriberr watch ~/Recordings
+                            ascribe watch ~/Recordings
                         </div>
                     </div>
 
@@ -151,8 +151,8 @@ export function CLISettings() {
                             Install as a background service to keep watching after restart.
                         </p>
                         <div className="bg-carbon-100 dark:bg-carbon-900 rounded p-3 font-mono text-sm text-carbon-800 dark:text-carbon-200">
-                            sudo scriberr install ~/Recordings<br />
-                            sudo scriberr start
+                            sudo ascribe install ~/Recordings<br />
+                            sudo ascribe start
                         </div>
                     </div>
                 </div>

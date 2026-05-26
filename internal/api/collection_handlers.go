@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"scriberr/internal/llm"
-	"scriberr/internal/models"
-	"scriberr/pkg/logger"
+	"ascribe/internal/llm"
+	"ascribe/internal/models"
+	"ascribe/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 )

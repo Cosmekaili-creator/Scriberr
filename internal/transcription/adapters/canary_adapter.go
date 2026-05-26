@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"scriberr/internal/transcription/interfaces"
-	"scriberr/pkg/downloader"
-	"scriberr/pkg/logger"
+	"ascribe/internal/transcription/interfaces"
+	"ascribe/pkg/downloader"
+	"ascribe/pkg/logger"
 )
 
 //go:embed py/nvidia/*

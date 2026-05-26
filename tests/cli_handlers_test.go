@@ -9,13 +9,13 @@ import (
 	"strings"
 	"testing"
 
-	"scriberr/internal/api"
-	"scriberr/internal/processing"
-	"scriberr/internal/queue"
-	"scriberr/internal/repository"
-	"scriberr/internal/service"
-	"scriberr/internal/sse"
-	"scriberr/internal/transcription"
+	"ascribe/internal/api"
+	"ascribe/internal/processing"
+	"ascribe/internal/queue"
+	"ascribe/internal/repository"
+	"ascribe/internal/service"
+	"ascribe/internal/sse"
+	"ascribe/internal/transcription"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -170,7 +170,7 @@ func (suite *CLIHandlerTestSuite) TestDownloadCLIBinary() {
 	// Create dummy binary file
 	dummyDir := "bin/cli"
 	os.MkdirAll(dummyDir, 0755)
-	dummyFile := filepath.Join(dummyDir, "scriberr-linux-amd64")
+	dummyFile := filepath.Join(dummyDir, "ascribe-linux-amd64")
 	os.WriteFile(dummyFile, []byte("dummy binary content"), 0755)
 	defer os.RemoveAll(dummyDir)
 

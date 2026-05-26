@@ -27,21 +27,21 @@ func InitConfig() {
 			fmt.Println(err)
 			// Don't exit, just don't load config from home
 		} else {
-			// Search config in home directory with name ".scriberr" (without extension).
+			// Search config in home directory with name ".ascribe" (without extension).
 			viper.AddConfigPath(home)
 			viper.SetConfigType("yaml")
-			viper.SetConfigName(".scriberr")
+			viper.SetConfigName(".ascribe")
 		}
 	}
 
-	viper.SetEnvPrefix("SCRIBERR")
+	viper.SetEnvPrefix("ASCRIBE")
 	viper.AutomaticEnv()
 
 	// Try to read config, ignore error if not found
 	_ = viper.ReadInConfig()
 }
 
-// SaveConfig saves the configuration to ~/.scriberr.yaml and returns the path
+// SaveConfig saves the configuration to ~/.ascribe.yaml and returns the path
 func SaveConfig(serverURL, token, watchFolder string) (string, error) {
 	if serverURL != "" {
 		viper.Set("server_url", serverURL)
@@ -57,7 +57,7 @@ func SaveConfig(serverURL, token, watchFolder string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	configPath := filepath.Join(home, ".scriberr.yaml")
+	configPath := filepath.Join(home, ".ascribe.yaml")
 	return configPath, viper.WriteConfigAs(configPath)
 }
 
