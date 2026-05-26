@@ -901,6 +901,78 @@ func (h *Handler) GetTranscript(c *gin.Context) {
 	})
 }
 
+// UpdateTranscriptContent updates the segment texts of an existing transcript.
+// Only completed jobs can be edited. Word-level timestamps are cleared on save
+// because they no longer match the edited text.
+func (h *Handler) UpdateTranscriptContent(c *gin.Context) {
+	jobID := c.Param("id")
+	if jobID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Job ID required"})
+		return
+	}
+
+	var body struct {
+		Segments []struct {
+			Start    float64 `json:"start"`
+			End      float64 `json:"end"`
+			Text     string  `json:"text"`
+			Speaker  *string `json:"speaker,omitempty"`
+			Language *string `json:"language,omitempty"`
+		} `json:"segments" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	job, err := h.jobRepo.FindByID(c.Request.Context(), jobID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
+		return
+	}
+	if job.Status != models.StatusCompleted || job.Transcript == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Transcript not available for editing"})
+		return
+	}
+
+	// Unmarshal existing blob to preserve metadata fields (language, confidence, etc.)
+	var blob map[string]interface{}
+	if err := json.Unmarshal([]byte(*job.Transcript), &blob); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse transcript"})
+		return
+	}
+
+	// Rebuild full text from new segments and clear word-level timestamps
+	textParts := make([]string, 0, len(body.Segments))
+	for _, s := range body.Segments {
+		if t := strings.TrimSpace(s.Text); t != "" {
+			textParts = append(textParts, t)
+		}
+	}
+	blob["text"] = strings.Join(textParts, " ")
+	blob["segments"] = body.Segments
+	blob["word_segments"] = []interface{}{}
+
+	updated, err := json.Marshal(blob)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to serialize transcript"})
+		return
+	}
+
+	if err := h.jobRepo.UpdateTranscript(c.Request.Context(), jobID, string(updated)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save transcript"})
+		return
+	}
+
+	var transcript interface{}
+	_ = json.Unmarshal(updated, &transcript)
+	c.JSON(http.StatusOK, gin.H{
+		"job_id":     job.ID,
+		"transcript": transcript,
+		"available":  true,
+	})
+}
+
 // @Summary List all transcription records
 // @Description Get a list of all transcription jobs with optional search and filtering
 // @Tags transcription

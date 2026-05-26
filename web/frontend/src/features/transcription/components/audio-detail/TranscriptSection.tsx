@@ -14,6 +14,8 @@ import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { X, StickyNote } from "lucide-react";
 import { computeWordOffsets } from "@/features/transcription/hooks/useKaraokeHighlight";
 import { useTranslation } from "@/i18n";
+import { useUpdateTranscript, type TranscriptSegment } from "@/features/transcription/hooks/useAudioDetail";
+import { useUpdateSpeaker } from "@/features/transcription/hooks/useTranscriptionSpeakers";
 import type { Transcript } from "@/features/transcription/hooks/useAudioDetail";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +37,7 @@ interface TranscriptSectionProps {
     downloadDialogOpen: boolean;
     setDownloadDialogOpen: (open: boolean) => void;
     downloadFormat: 'txt' | 'json';
+    editMode?: boolean;
 }
 
 export function TranscriptSection({
@@ -54,12 +57,25 @@ export function TranscriptSection({
     downloadDialogOpen,
     setDownloadDialogOpen,
     downloadFormat,
+    editMode = false,
     className
 }: TranscriptSectionProps & { className?: string }) {
     const isMobile = useIsMobile();
     const isDesktop = useIsDesktop();
     const { t } = useTranslation();
     const queryClient = useQueryClient();
+
+    // Transcript edit hook
+    const { mutate: updateTranscript } = useUpdateTranscript(audioId);
+    const { mutate: updateSpeaker } = useUpdateSpeaker(audioId);
+
+    const handleSegmentBlur = (segments: TranscriptSegment[]) => {
+        updateTranscript(segments);
+    };
+
+    const handleSpeakerRename = (originalSpeaker: string, newName: string) => {
+        updateSpeaker({ originalSpeaker, customName: newName });
+    };
 
     // Data hooks
     const { data: notes = [] } = useNotes(audioId);
@@ -197,6 +213,9 @@ export function TranscriptSection({
                             highlightedWordRef={highlightedWordRef}
                             speakerMappings={speakerMappings}
                             autoScrollEnabled={autoScrollEnabled}
+                            editMode={editMode}
+                            onSegmentBlur={handleSegmentBlur}
+                            onSpeakerRename={handleSpeakerRename}
                         />
                     </div>
                 </div>

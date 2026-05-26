@@ -185,6 +185,32 @@ export function useLogs(audioId: string) {
     });
 }
 
+export function useUpdateTranscript(audioId: string) {
+    const { getAuthHeaders } = useAuth();
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (segments: TranscriptSegment[]) => {
+            const response = await fetch(`/api/v1/transcription/${audioId}/transcript`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...getAuthHeaders(),
+                },
+                body: JSON.stringify({ segments }),
+            });
+            if (!response.ok) {
+                const msg = await response.text();
+                throw new Error(msg || "Failed to update transcript");
+            }
+            return response.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["transcript", audioId] });
+        },
+    });
+}
+
 export function useUpdateTitle(audioId: string) {
     const { getAuthHeaders } = useAuth();
     const queryClient = useQueryClient();

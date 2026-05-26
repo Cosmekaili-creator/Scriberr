@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useParams, useNavigate } from "react-router-dom";
-import { MoreVertical, Edit2, Activity, FileText, Bot, Check, Loader2, List, AlignLeft, ArrowDownCircle, StickyNote, MessageCircle, FileImage, FileJson, Clock, AlertCircle, Users } from "lucide-react";
+import { MoreVertical, Edit2, Activity, FileText, Bot, Check, Loader2, List, AlignLeft, ArrowDownCircle, StickyNote, MessageCircle, FileImage, FileJson, Clock, AlertCircle, Users, Pencil } from "lucide-react";
 import { Header } from "@/components/Header";
 
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,9 @@ export const AudioDetailView = function AudioDetailView({ audioId: propAudioId }
     const [speakerRenameOpen, setSpeakerRenameOpen] = useState(false);
     const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
     const [downloadFormat, setDownloadFormat] = useState<'txt' | 'json'>('txt');
+
+    // Edit mode for transcript inline editing
+    const [editMode, setEditMode] = useState(false);
 
     // Dialog States
     const [executionDialogOpen, setExecutionDialogOpen] = useState(false);
@@ -340,6 +343,12 @@ export const AudioDetailView = function AudioDetailView({ audioId: propAudioId }
                                                         <MessageCircle className={cn("mr-2 h-4 w-4 opacity-70", chatOpen && "text-[var(--brand-solid)]")} />
                                                         {t('detail.menu.chatWithAudio')}
                                                     </DropdownMenuItem>
+                                                    {transcript?.segments && transcript.segments.length > 0 && audioFile.status === 'completed' && (
+                                                        <DropdownMenuItem onClick={() => setEditMode(v => !v)} className="rounded-[8px] cursor-pointer">
+                                                            <Pencil className={cn("mr-2 h-4 w-4 opacity-70", editMode && "text-[var(--brand-solid)]")} />
+                                                            {editMode ? t('detail.transcript.editModeActive') : t('detail.transcript.editMode')}
+                                                        </DropdownMenuItem>
+                                                    )}
                                                     {transcript?.segments?.some((s: TranscriptSegment) => s.speaker) && (
                                                         <DropdownMenuItem onClick={() => setSpeakerRenameOpen(true)} className="rounded-[8px] cursor-pointer">
                                                             <Users className="mr-2 h-4 w-4 opacity-70" />
@@ -397,6 +406,7 @@ export const AudioDetailView = function AudioDetailView({ audioId: propAudioId }
                                     setDownloadDialogOpen={setDownloadDialogOpen}
                                     downloadFormat={downloadFormat}
                                     isPlaying={isPlaying}
+                                    editMode={editMode}
                                 />
                             </div>
                         </div>

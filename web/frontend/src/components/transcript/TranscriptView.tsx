@@ -39,6 +39,8 @@ interface Transcript {
     word_segments?: WordSegment[];
 }
 
+type EditableSegment = { start: number; end: number; text: string; speaker?: string };
+
 interface TranscriptViewProps {
     transcript: Transcript | null;
     mode: 'compact' | 'expanded';
@@ -50,6 +52,9 @@ interface TranscriptViewProps {
     speakerMappings: Record<string, string>;
     autoScrollEnabled: boolean;
     onSeek: (time: number) => void;
+    editMode?: boolean;
+    onSegmentBlur?: (segments: EditableSegment[]) => void;
+    onSpeakerRename?: (originalSpeaker: string, newName: string) => void;
     className?: string;
 }
 
@@ -64,6 +69,9 @@ export const TranscriptView = forwardRef<HTMLDivElement, TranscriptViewProps>(({
     speakerMappings,
     autoScrollEnabled,
     onSeek,
+    editMode = false,
+    onSegmentBlur,
+    onSpeakerRename,
     className
 }, ref) => {
 
@@ -76,6 +84,34 @@ export const TranscriptView = forwardRef<HTMLDivElement, TranscriptViewProps>(({
     const containerRef = useRef<HTMLDivElement>(null);
     const [isModifierPressed, setIsModifierPressed] = useState(false);
     const isDesktop = useIsDesktop();
+
+    // --- Inline edit state ---
+    const [localSegments, setLocalSegments] = useState<EditableSegment[]>(() => transcript?.segments ?? []);
+    const [editingSpeaker, setEditingSpeaker] = useState<string | null>(null);
+    const [speakerDraft, setSpeakerDraft] = useState('');
+
+    // Sync local copy when transcript changes (after server save)
+    useEffect(() => {
+        if (transcript?.segments) setLocalSegments(transcript.segments);
+    }, [transcript?.segments]);
+
+    // Auto-resize textarea helper
+    const autoResize = (el: HTMLTextAreaElement) => {
+        el.style.height = 'auto';
+        el.style.height = `${el.scrollHeight}px`;
+    };
+
+    const handleSpeakerClick = (originalSpeaker: string) => {
+        setEditingSpeaker(originalSpeaker);
+        setSpeakerDraft(getDisplaySpeakerName(originalSpeaker));
+    };
+
+    const commitSpeakerRename = () => {
+        if (editingSpeaker && speakerDraft.trim()) {
+            onSpeakerRename?.(editingSpeaker, speakerDraft.trim());
+        }
+        setEditingSpeaker(null);
+    };
 
     // Use CSS Highlight API for Compact Mode
     // Note: We only use this hook when in compact mode to save resources
@@ -127,9 +163,14 @@ export const TranscriptView = forwardRef<HTMLDivElement, TranscriptViewProps>(({
 
     // 1. Precompute per-segment text and offsets
     const expandedData = useMemo(() => {
-        if (!transcript?.segments || !transcript.word_segments) return [];
+        if (!transcript?.segments) return [];
+
+        const hasWords = transcript.word_segments && transcript.word_segments.length > 0;
 
         return transcript.segments.map((segment) => {
+            if (!hasWords) {
+                return { ...segment, fullText: segment.text, offsets: [] as ReturnType<typeof computeWordOffsets>['offsets'] };
+            }
             // Filter words belonging to this segment
             const segmentWords = transcript.word_segments!.filter(
                 word => word.start >= segment.start - 0.1 && word.end <= segment.end + 0.1
@@ -291,56 +332,96 @@ export const TranscriptView = forwardRef<HTMLDivElement, TranscriptViewProps>(({
         }
 
         return (
-            <div className="space-y-4"> {/* Reduced spacing from space-y-6 */}
-                {expandedData.map((segment, i) => (
-                    <div
-                        key={i}
-                        className={cn(
-                            "group flex flex-col sm:flex-row items-start gap-4 p-3 rounded-lg transition-colors border",
-                            i === activeSegmentIndex && isPlaying
-                                ? "bg-carbon-50 dark:bg-carbon-800/40 border-carbon-200 dark:border-carbon-700"
-                                : "hover:bg-carbon-50 dark:hover:bg-carbon-800/50 border-transparent hover:border-carbon-100 dark:hover:border-carbon-800"
-                        )}
-                    >
-                        {/* Timestamp & Speaker */}
-                        <div className="flex-shrink-0 w-24 sm:w-28 flex flex-col items-start sm:items-end gap-1 text-xs text-carbon-500 dark:text-carbon-400 select-none mt-1">
-                            <span className="font-mono bg-carbon-100 dark:bg-carbon-800/80 px-1.5 py-0.5 rounded text-[10px] sm:text-xs">
-                                {new Date(segment.start * 1000).toISOString().substr(11, 8)}
-                            </span>
-                            {segment.speaker && (
-                                <span
-                                    className="font-medium text-carbon-700 dark:text-carbon-300 truncate max-w-full"
-                                    title={getDisplaySpeakerName(segment.speaker)}
-                                >
-                                    {getDisplaySpeakerName(segment.speaker)}
-                                </span>
-                            )}
-                        </div>
+            <div className="space-y-4">
+                {expandedData.map((segment, i) => {
+                    const localSeg = localSegments[i] ?? segment;
+                    const isEditingSpeakerHere = editingSpeaker === segment.speaker && segment.speaker;
 
-                        {/* Text */}
+                    return (
                         <div
-                            ref={(el) => { segmentRefs.current[i] = el; }}
-                            onClick={isDesktop ? (e) => handleExpandedClick(e, i) : undefined}
+                            key={i}
                             className={cn(
-                                "flex-grow text-base text-primary leading-relaxed whitespace-pre-wrap font-reading transition-colors duration-200 select-text",
-                                isDesktop && isModifierPressed ? 'cursor-pointer hover:text-carbon-900 dark:hover:text-carbon-100' : 'cursor-text'
+                                "group flex flex-col sm:flex-row items-start gap-4 p-3 rounded-lg transition-colors border",
+                                editMode
+                                    ? "border-[var(--border-subtle)] bg-[var(--bg-main)]/40"
+                                    : i === activeSegmentIndex && isPlaying
+                                        ? "bg-carbon-50 dark:bg-carbon-800/40 border-carbon-200 dark:border-carbon-700"
+                                        : "hover:bg-carbon-50 dark:hover:bg-carbon-800/50 border-transparent hover:border-carbon-100 dark:hover:border-carbon-800"
                             )}
-                            style={{
-                                // CRITICAL: Enable native text selection on iOS/Android
-                                WebkitUserSelect: 'text',
-                                userSelect: 'text',
-                                // CRITICAL: Remove grey tap highlight on iOS
-                                WebkitTapHighlightColor: 'transparent',
-                                // CRITICAL: Allow text selection gestures while supporting scroll
-                                touchAction: 'pan-y pinch-zoom',
-                                WebkitTouchCallout: 'default'
-                            }}
-                            data-transcript-text
                         >
-                            {segment.fullText || segment.text}
+                            {/* Timestamp & Speaker */}
+                            <div className="flex-shrink-0 w-24 sm:w-28 flex flex-col items-start sm:items-end gap-1 text-xs text-carbon-500 dark:text-carbon-400 select-none mt-1">
+                                <span className="font-mono bg-carbon-100 dark:bg-carbon-800/80 px-1.5 py-0.5 rounded text-[10px] sm:text-xs">
+                                    {new Date(segment.start * 1000).toISOString().substr(11, 8)}
+                                </span>
+                                {segment.speaker && (
+                                    isEditingSpeakerHere ? (
+                                        <input
+                                            autoFocus
+                                            value={speakerDraft}
+                                            onChange={(e) => setSpeakerDraft(e.target.value)}
+                                            onBlur={commitSpeakerRename}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') { e.preventDefault(); commitSpeakerRename(); }
+                                                if (e.key === 'Escape') { e.preventDefault(); setEditingSpeaker(null); }
+                                            }}
+                                            className="w-full text-xs font-medium bg-[var(--brand-light)] text-[var(--brand-solid)] border border-[var(--brand-solid)]/30 rounded px-1 py-0.5 focus:outline-none"
+                                            placeholder={t('detail.transcript.speaker.placeholder')}
+                                        />
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSpeakerClick(segment.speaker!)}
+                                            title={t('detail.transcript.speaker.rename')}
+                                            className="font-medium text-carbon-700 dark:text-carbon-300 truncate max-w-full text-left hover:text-[var(--brand-solid)] hover:underline transition-colors cursor-pointer"
+                                        >
+                                            {getDisplaySpeakerName(segment.speaker)}
+                                        </button>
+                                    )
+                                )}
+                            </div>
+
+                            {/* Text */}
+                            {editMode ? (
+                                <textarea
+                                    ref={(el) => {
+                                        segmentRefs.current[i] = el as unknown as HTMLDivElement;
+                                        if (el) { el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px`; }
+                                    }}
+                                    value={localSeg.text}
+                                    onChange={(e) => {
+                                        const updated = [...localSegments];
+                                        updated[i] = { ...localSeg, text: e.target.value };
+                                        setLocalSegments(updated);
+                                        autoResize(e.target);
+                                    }}
+                                    onBlur={() => onSegmentBlur?.(localSegments)}
+                                    rows={1}
+                                    className="flex-grow text-base leading-relaxed font-reading resize-none bg-transparent border-0 border-b border-dashed border-[var(--border-subtle)] focus:border-[var(--brand-solid)] focus:outline-none w-full transition-colors py-0"
+                                />
+                            ) : (
+                                <div
+                                    ref={(el) => { segmentRefs.current[i] = el; }}
+                                    onClick={isDesktop ? (e) => handleExpandedClick(e, i) : undefined}
+                                    className={cn(
+                                        "flex-grow text-base text-primary leading-relaxed whitespace-pre-wrap font-reading transition-colors duration-200 select-text",
+                                        isDesktop && isModifierPressed ? 'cursor-pointer hover:text-carbon-900 dark:hover:text-carbon-100' : 'cursor-text'
+                                    )}
+                                    style={{
+                                        WebkitUserSelect: 'text',
+                                        userSelect: 'text',
+                                        WebkitTapHighlightColor: 'transparent',
+                                        touchAction: 'pan-y pinch-zoom',
+                                        WebkitTouchCallout: 'default'
+                                    }}
+                                    data-transcript-text
+                                >
+                                    {segment.fullText || segment.text}
+                                </div>
+                            )}
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         );
     };

@@ -398,6 +398,10 @@ export const fr: Record<string, string> = {
   'detail.transcript.noTranscript': 'Aucune transcription disponible.',
   'detail.transcript.notes': 'Notes',
   'detail.transcript.closeNotes': 'Fermer les notes',
+  'detail.transcript.editMode': 'Modifier le transcript',
+  'detail.transcript.editModeActive': 'Modification en cours',
+  'detail.transcript.speaker.rename': 'Cliquer pour renommer',
+  'detail.transcript.speaker.placeholder': 'Nom du speaker…',
 
   // Selection Menu
   'detail.selection.addNote': 'Ajouter une note',
