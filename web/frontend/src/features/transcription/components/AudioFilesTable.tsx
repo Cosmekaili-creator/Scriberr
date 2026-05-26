@@ -10,8 +10,10 @@ import {
 	Check,
 	AlertCircle,
 	Clock,
-	X
+	X,
+	FolderPlus,
 } from "lucide-react";
+import { AddToCollectionDialog } from "@/features/collections/AddToCollectionDialog";
 import { WandAdvancedIcon } from "@/components/icons/WandAdvancedIcon";
 // Checkbox removed
 
@@ -235,6 +237,8 @@ export const AudioFilesTable = memo(function AudioFilesTable({
 	const [stopDialogOpen, setStopDialogOpen] = useState(false);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [selectedFile, setSelectedFile] = useState<AudioFile | null>(null);
+	const [collectionDialogFileId, setCollectionDialogFileId] = useState<string | null>(null);
+	const [bulkCollectionOpen, setBulkCollectionOpen] = useState(false);
 
 	// Calculate queue positions for pending jobs
 	const queuePositions = useMemo(() => {
@@ -761,6 +765,7 @@ export const AudioFilesTable = memo(function AudioFilesTable({
 								onTranscribeAdvanced={() => handleTranscribeClick(file.id)}
 								onDelete={() => handleDeleteClick(file)}
 								onStop={() => handleStopClick(file)}
+								onAddToCollection={() => setCollectionDialogFileId(file.id)}
 								isProcessing={file.status === "processing" || file.status === "pending"}
 								isSelectionMode={Object.keys(rowSelection).length > 0}
 								shouldShowHint={shouldShowHint && index === 0}
@@ -837,6 +842,20 @@ export const AudioFilesTable = memo(function AudioFilesTable({
 													</Tooltip>
 												</>
 											)}
+
+											<Tooltip>
+												<TooltipTrigger asChild>
+													<Button
+														variant="ghost"
+														size="icon"
+														onClick={() => setCollectionDialogFileId(file.id)}
+														className="h-9 w-9 rounded-lg text-gray-400 hover:text-[var(--brand-solid)] hover:bg-orange-50 cursor-pointer transition-colors"
+													>
+														<FolderPlus className="h-5 w-5" strokeWidth={2} />
+													</Button>
+												</TooltipTrigger>
+												<TooltipContent>{t('collections.addToCollection')}</TooltipContent>
+											</Tooltip>
 
 											{(file.status === "processing" || file.status === "pending") ? (
 												<Tooltip>
@@ -942,6 +961,24 @@ export const AudioFilesTable = memo(function AudioFilesTable({
 								</Button>
 							</TooltipTrigger>
 							<TooltipContent>{t('files.table.deleteSelected')}</TooltipContent>
+						</Tooltip>
+
+						<div className="h-4 w-px bg-[var(--border-subtle)] mx-1" />
+
+						{/* Bulk Add to Collection */}
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={() => setBulkCollectionOpen(true)}
+									disabled={bulkActionLoading}
+									className="h-9 w-9 rounded-full hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+								>
+									<FolderPlus className="h-4 w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>{t('collections.addToCollection')}</TooltipContent>
 						</Tooltip>
 
 						<div className="h-4 w-px bg-[var(--border-subtle)] mx-1" />
@@ -1074,6 +1111,23 @@ export const AudioFilesTable = memo(function AudioFilesTable({
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+
+			{collectionDialogFileId && (
+				<AddToCollectionDialog
+					open={!!collectionDialogFileId}
+					onOpenChange={(v) => { if (!v) setCollectionDialogFileId(null); }}
+					recordingId={collectionDialogFileId}
+				/>
+			)}
+
+			<AddToCollectionDialog
+				open={bulkCollectionOpen}
+				onOpenChange={(v) => {
+					setBulkCollectionOpen(v);
+					if (!v) setRowSelection({});
+				}}
+				recordingIds={Object.keys(rowSelection)}
+			/>
 
 		</div >
 	);

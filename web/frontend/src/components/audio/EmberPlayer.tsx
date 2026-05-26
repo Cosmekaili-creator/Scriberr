@@ -3,6 +3,8 @@ import { Play, Pause, AlertCircle } from "lucide-react";
 import { AudioVisualizer } from "./AudioVisualizer";
 import { cn } from "@/lib/utils";
 
+const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const;
+
 export interface EmberPlayerRef {
     seekTo: (time: number) => void;
     playPause: () => void;
@@ -26,6 +28,8 @@ export const EmberPlayer = forwardRef<EmberPlayerRef, EmberPlayerProps>(
         const [currentTime, setCurrentTime] = useState(0);
         const [duration, setDuration] = useState(0);
         const [error, setError] = useState<string | null>(null);
+        const [playbackSpeed, setPlaybackSpeed] = useState(1);
+        const [showSpeedMenu, setShowSpeedMenu] = useState(false);
 
         // Visualizer Interaction State
         const [hoverTime, setHoverTime] = useState(0);
@@ -79,6 +83,14 @@ export const EmberPlayer = forwardRef<EmberPlayerRef, EmberPlayerProps>(
             }
         };
 
+        const handleSpeedChange = (speed: number) => {
+            setPlaybackSpeed(speed);
+            setShowSpeedMenu(false);
+            if (audioRef.current) {
+                audioRef.current.playbackRate = speed;
+            }
+        };
+
         // --- 4. Advanced Scrubber Logic ---
         const calculateTimeFromEvent = useCallback((e: React.MouseEvent | MouseEvent) => {
             if (!progressRef.current || !duration) return 0;
@@ -124,6 +136,13 @@ export const EmberPlayer = forwardRef<EmberPlayerRef, EmberPlayerProps>(
             };
         }, [isDragging, calculateTimeFromEvent]);
 
+        useEffect(() => {
+            if (!showSpeedMenu) return;
+            const close = () => setShowSpeedMenu(false);
+            window.addEventListener("click", close);
+            return () => window.removeEventListener("click", close);
+        }, [showSpeedMenu]);
+
         const handleHoverMove = (e: React.MouseEvent<HTMLDivElement>) => {
             if (!progressRef.current || !duration) return;
             const rect = progressRef.current.getBoundingClientRect();
@@ -160,16 +179,12 @@ export const EmberPlayer = forwardRef<EmberPlayerRef, EmberPlayerProps>(
         return (
             <div
                 className={cn(
-                    // Base Container Styles - designed to fill the parent card
-                    "relative w-full overflow-hidden rounded-[var(--radius-card)]",
-                    // Use standard background matching the design system
-                    "bg-transparent",
+                    "relative w-full rounded-[var(--radius-card)] bg-transparent",
                     className
                 )}
             >
-                {/* Visualizer Layer (Background) */}
-                {/* Removed mix-blend-screen which makes viz invisible on white. Added minimal opacity for subtlety */}
-                <div className="absolute inset-0 z-0 h-full w-full pointer-events-none opacity-40">
+                {/* Visualizer Layer — clipped independently so dropdown can escape */}
+                <div className="absolute inset-0 z-0 h-full w-full pointer-events-none opacity-40 overflow-hidden rounded-[var(--radius-card)]">
                     <AudioVisualizer
                         audioRef={audioRef}
                         isPlaying={isPlaying}
@@ -180,18 +195,58 @@ export const EmberPlayer = forwardRef<EmberPlayerRef, EmberPlayerProps>(
 
                 {/* Controls Layer */}
                 <div className="relative z-10 flex flex-col px-1 py-1 gap-3">
-                    {/* Top Row: Button & Time */}
+                    {/* Top Row: [Play + Speed] ... [Time] */}
                     <div className="flex items-center justify-between">
-                        <button
-                            onClick={togglePlay}
-                            className="flex h-12 w-12 items-center justify-center rounded-full bg-[image:var(--brand-gradient)] text-white shadow-lg shadow-orange-500/20 hover:scale-105 active:scale-95 transition-all focus:outline-none cursor-pointer"
-                        >
-                            {isPlaying ? (
-                                <Pause size={20} fill="currentColor" />
-                            ) : (
-                                <Play size={20} fill="currentColor" className="ml-0.5" />
-                            )}
-                        </button>
+                        {/* Left cluster: play button + speed pill */}
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={togglePlay}
+                                className="flex h-12 w-12 items-center justify-center rounded-full bg-[image:var(--brand-gradient)] text-white shadow-lg shadow-orange-500/20 hover:scale-105 active:scale-95 transition-all focus:outline-none cursor-pointer"
+                            >
+                                {isPlaying ? (
+                                    <Pause size={20} fill="currentColor" />
+                                ) : (
+                                    <Play size={20} fill="currentColor" className="ml-0.5" />
+                                )}
+                            </button>
+
+                            {/* Speed selector — pill button style */}
+                            <div className="relative">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setShowSpeedMenu(v => !v); }}
+                                    className={cn(
+                                        "h-8 px-3 rounded-full border text-xs font-mono font-semibold transition-all cursor-pointer",
+                                        playbackSpeed !== 1
+                                            ? "bg-[image:var(--brand-gradient)] text-white border-transparent shadow-sm"
+                                            : "bg-[var(--secondary)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-main)]"
+                                    )}
+                                    title="Playback speed"
+                                >
+                                    {playbackSpeed}×
+                                </button>
+                                {showSpeedMenu && (
+                                    <div
+                                        className="absolute top-full mt-1 left-0 z-50 min-w-[80px] bg-[var(--bg-main)] border border-[var(--border-subtle)] rounded-xl shadow-[var(--shadow-float)] overflow-hidden"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        {SPEED_OPTIONS.map(speed => (
+                                            <button
+                                                key={speed}
+                                                onClick={() => handleSpeedChange(speed)}
+                                                className={cn(
+                                                    "block w-full px-4 py-2 text-left text-xs font-mono hover:bg-[var(--secondary)] transition-colors cursor-pointer",
+                                                    speed === playbackSpeed
+                                                        ? "text-[var(--brand-solid)] font-bold bg-[var(--brand-light)]"
+                                                        : "text-[var(--text-primary)]"
+                                                )}
+                                            >
+                                                {speed}×
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
 
                         <div className="flex flex-col items-end">
                             <span className="font-mono text-xs font-medium text-[var(--text-secondary)] tabular-nums tracking-wide">

@@ -248,6 +248,22 @@ func SetupRoutes(handler *Handler, authService *auth.AuthService) *gin.Engine {
 			config.POST("/openai/validate", handler.ValidateOpenAIKey)
 		}
 
+		// Collection routes (require authentication)
+		collections := v1.Group("/collections")
+		collections.Use(middleware.AuthMiddleware(authService))
+		{
+			collections.GET("/", handler.ListCollections)
+			collections.POST("/", handler.CreateCollection)
+			collections.GET("/:id", handler.GetCollection)
+			collections.PUT("/:id", handler.UpdateCollection)
+			collections.DELETE("/:id", handler.DeleteCollection)
+			collections.POST("/:id/recordings", handler.AddToCollection)
+			collections.DELETE("/:id/recordings/:recording_id", handler.RemoveFromCollection)
+			collections.GET("/for-recording/:recording_id", handler.GetCollectionsForRecording)
+			collections.POST("/:id/summarize", handler.SummarizeCollection)
+			collections.POST("/:id/combine", handler.CombineCollectionSummaries)
+		}
+
 		// SSE Events (require authentication)
 		events := v1.Group("/events")
 		events.Use(middleware.AuthMiddleware(authService))

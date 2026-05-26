@@ -105,6 +105,7 @@ func (suite *SecurityTestSuite) SetupSuite() {
 		noteRepo,
 		speakerMappingRepo,
 		refreshTokenRepo,
+		repository.NewCollectionRepository(database.DB),
 		suite.taskQueue,
 		suite.unifiedProcessor,
 		suite.quickTranscriptionService,

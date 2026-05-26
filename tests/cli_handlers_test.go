@@ -78,6 +78,7 @@ func (suite *CLIHandlerTestSuite) SetupSuite() {
 		noteRepo,
 		speakerMappingRepo,
 		refreshTokenRepo,
+		repository.NewCollectionRepository(suite.helper.DB),
 		suite.taskQueue,
 		suite.unifiedProcessor,
 		suite.quickTranscription,

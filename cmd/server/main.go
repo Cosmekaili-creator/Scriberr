@@ -109,6 +109,7 @@ func main() {
 	noteRepo := repository.NewNoteRepository(database.DB)
 	speakerMappingRepo := repository.NewSpeakerMappingRepository(database.DB)
 	refreshTokenRepo := repository.NewRefreshTokenRepository(database.DB)
+	collectionRepo := repository.NewCollectionRepository(database.DB)
 
 	// Initialize services
 	logger.Startup("service", "Initializing services")
@@ -160,6 +161,7 @@ func main() {
 		noteRepo,
 		speakerMappingRepo,
 		refreshTokenRepo,
+		collectionRepo,
 		taskQueue,
 		unifiedProcessor,
 		quickTranscriptionService,

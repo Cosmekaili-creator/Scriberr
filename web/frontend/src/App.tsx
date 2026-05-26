@@ -7,7 +7,8 @@ const AudioDetailView = lazy(() => import("@/features/transcription/components/A
 const Settings = lazy(() => import('@/features/settings/pages/SettingsPage').then(module => ({ default: module.Settings })))
 const CLISettings = lazy(() => import('@/features/settings/pages/CLISettingsPage').then(module => ({ default: module.CLISettings })))
 const CLIAuthConfirmation = lazy(() => import('./features/auth/components/CLIAuthConfirmation').then(module => ({ default: module.CLIAuthConfirmation })))
-
+const CollectionsPage = lazy(() => import('./features/collections/CollectionsPage').then(module => ({ default: module.CollectionsPage })))
+const CollectionDetailPage = lazy(() => import('./features/collections/CollectionDetailPage').then(module => ({ default: module.CollectionDetailPage })))
 
 // Loading component
 const PageLoader = () => (
@@ -26,6 +27,9 @@ function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/settings/cli" element={<CLISettings />} />
         <Route path="/auth/cli/authorize" element={<CLIAuthConfirmation />} />
+
+        <Route path="/collections" element={<CollectionsPage />} />
+        <Route path="/collections/:id" element={<CollectionDetailPage />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

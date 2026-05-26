@@ -47,6 +47,7 @@ type Handler struct {
 	noteRepo            repository.NoteRepository
 	speakerMappingRepo  repository.SpeakerMappingRepository
 	refreshTokenRepo    repository.RefreshTokenRepository
+	collectionRepo      repository.CollectionRepository
 	taskQueue           *queue.TaskQueue
 	unifiedProcessor    *transcription.UnifiedJobProcessor
 	quickTranscription  *transcription.QuickTranscriptionService
@@ -70,6 +71,7 @@ func NewHandler(
 	noteRepo repository.NoteRepository,
 	speakerMappingRepo repository.SpeakerMappingRepository,
 	refreshTokenRepo repository.RefreshTokenRepository,
+	collectionRepo repository.CollectionRepository,
 	taskQueue *queue.TaskQueue,
 	unifiedProcessor *transcription.UnifiedJobProcessor,
 	quickTranscription *transcription.QuickTranscriptionService,
@@ -91,6 +93,7 @@ func NewHandler(
 		noteRepo:            noteRepo,
 		speakerMappingRepo:  speakerMappingRepo,
 		refreshTokenRepo:    refreshTokenRepo,
+		collectionRepo:      collectionRepo,
 		taskQueue:           taskQueue,
 		unifiedProcessor:    unifiedProcessor,
 		quickTranscription:  quickTranscription,

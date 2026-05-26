@@ -6,7 +6,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Upload, Mic, Settings, LogOut, Home, Plus, Grip, Zap, Youtube, Video, Users, MonitorSpeaker } from "lucide-react";
+import { Upload, Mic, Settings, LogOut, Home, Plus, Grip, Zap, Youtube, Video, Users, MonitorSpeaker, FolderOpen } from "lucide-react";
 import { ScriberrLogo } from "./ScriberrLogo";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { AudioRecorder } from "./AudioRecorder";
@@ -87,6 +87,10 @@ export function Header({ onFileSelect, onMultiTrackClick, onDownloadComplete }: 
 
 	const handleHomeClick = () => {
 		navigate("/");
+	};
+
+	const handleCollectionsClick = () => {
+		navigate("/collections");
 	};
 
 	const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -278,6 +282,10 @@ export function Header({ onFileSelect, onMultiTrackClick, onDownloadComplete }: 
 							<DropdownMenuItem onClick={handleHomeClick} className="cursor-pointer rounded-[var(--radius-btn)] focus:bg-[var(--secondary)] py-2.5">
 								<Home className="h-4 w-4 mr-2" />
 								{t('header.home')}
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={handleCollectionsClick} className="cursor-pointer rounded-[var(--radius-btn)] focus:bg-[var(--secondary)] py-2.5">
+								<FolderOpen className="h-4 w-4 mr-2" />
+								{t('collections.title')}
 							</DropdownMenuItem>
 							<DropdownMenuItem onClick={handleSettingsClick} className="cursor-pointer rounded-[var(--radius-btn)] focus:bg-[var(--secondary)] py-2.5">
 								<Settings className="h-4 w-4 mr-2" />

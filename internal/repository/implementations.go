@@ -623,3 +623,154 @@ func (r *refreshTokenRepository) Revoke(ctx context.Context, id uint) error {
 func (r *refreshTokenRepository) RevokeByHash(ctx context.Context, hash string) error {
 	return r.db.WithContext(ctx).Model(&models.RefreshToken{}).Where("hashed = ?", hash).Update("revoked", true).Error
 }
+
+// CollectionRepository handles collection operations.
+type CollectionRepository interface {
+	Create(ctx context.Context, c *models.Collection) error
+	FindByID(ctx context.Context, id string, userID uint) (*models.Collection, error)
+	ListByUser(ctx context.Context, userID uint) ([]models.Collection, error)
+	Update(ctx context.Context, c *models.Collection) error
+	Delete(ctx context.Context, id string, userID uint) error
+	AddRecordings(ctx context.Context, collectionID string, recordingIDs []string) error
+	RemoveRecording(ctx context.Context, collectionID string, recordingID string) error
+	ListRecordings(ctx context.Context, collectionID string) ([]models.TranscriptionJob, error)
+	ListByRecording(ctx context.Context, recordingID string, userID uint) ([]models.Collection, error)
+}
+
+type collectionRepository struct {
+	db *gorm.DB
+}
+
+func NewCollectionRepository(db *gorm.DB) CollectionRepository {
+	return &collectionRepository{db: db}
+}
+
+func (r *collectionRepository) Create(ctx context.Context, c *models.Collection) error {
+	return r.db.WithContext(ctx).Create(c).Error
+}
+
+func (r *collectionRepository) FindByID(ctx context.Context, id string, userID uint) (*models.Collection, error) {
+	var c models.Collection
+	err := r.db.WithContext(ctx).
+		Where("id = ? AND user_id = ?", id, userID).
+		First(&c).Error
+	if err != nil {
+		return nil, err
+	}
+	// Populate recording count.
+	var count int64
+	r.db.WithContext(ctx).Model(&models.CollectionRecording{}).
+		Where("collection_id = ?", id).Count(&count)
+	c.RecordingCount = int(count)
+	return &c, nil
+}
+
+func (r *collectionRepository) ListByUser(ctx context.Context, userID uint) ([]models.Collection, error) {
+	var collections []models.Collection
+	if err := r.db.WithContext(ctx).
+		Where("user_id = ?", userID).
+		Order("created_at DESC").
+		Find(&collections).Error; err != nil {
+		return nil, err
+	}
+	// Populate counts in a single query.
+	if len(collections) == 0 {
+		return collections, nil
+	}
+	type countRow struct {
+		CollectionID string
+		Count        int
+	}
+	var rows []countRow
+	r.db.WithContext(ctx).
+		Model(&models.CollectionRecording{}).
+		Select("collection_id, count(*) as count").
+		Group("collection_id").
+		Scan(&rows)
+	countMap := make(map[string]int, len(rows))
+	for _, row := range rows {
+		countMap[row.CollectionID] = row.Count
+	}
+	for i := range collections {
+		collections[i].RecordingCount = countMap[collections[i].ID]
+	}
+	return collections, nil
+}
+
+func (r *collectionRepository) Update(ctx context.Context, c *models.Collection) error {
+	return r.db.WithContext(ctx).Save(c).Error
+}
+
+func (r *collectionRepository) Delete(ctx context.Context, id string, userID uint) error {
+	// Delete join table entries first, then the collection.
+	if err := r.db.WithContext(ctx).
+		Where("collection_id = ?", id).
+		Delete(&models.CollectionRecording{}).Error; err != nil {
+		return err
+	}
+	return r.db.WithContext(ctx).
+		Where("id = ? AND user_id = ?", id, userID).
+		Delete(&models.Collection{}).Error
+}
+
+func (r *collectionRepository) AddRecordings(ctx context.Context, collectionID string, recordingIDs []string) error {
+	rows := make([]models.CollectionRecording, 0, len(recordingIDs))
+	for _, rid := range recordingIDs {
+		rows = append(rows, models.CollectionRecording{
+			CollectionID: collectionID,
+			RecordingID:  rid,
+		})
+	}
+	// INSERT OR IGNORE to avoid duplicate errors.
+	return r.db.WithContext(ctx).
+		Exec("INSERT OR IGNORE INTO collection_recordings (collection_id, recording_id, created_at) VALUES "+
+			buildInsertPlaceholders(len(rows)), buildInsertArgs(rows)...).Error
+}
+
+func (r *collectionRepository) RemoveRecording(ctx context.Context, collectionID string, recordingID string) error {
+	return r.db.WithContext(ctx).
+		Where("collection_id = ? AND recording_id = ?", collectionID, recordingID).
+		Delete(&models.CollectionRecording{}).Error
+}
+
+func (r *collectionRepository) ListRecordings(ctx context.Context, collectionID string) ([]models.TranscriptionJob, error) {
+	var jobs []models.TranscriptionJob
+	err := r.db.WithContext(ctx).
+		Joins("JOIN collection_recordings cr ON cr.recording_id = transcription_jobs.id").
+		Where("cr.collection_id = ? AND transcription_jobs.deleted_at IS NULL", collectionID).
+		Order("cr.created_at DESC").
+		Find(&jobs).Error
+	return jobs, err
+}
+
+func (r *collectionRepository) ListByRecording(ctx context.Context, recordingID string, userID uint) ([]models.Collection, error) {
+	var collections []models.Collection
+	err := r.db.WithContext(ctx).
+		Joins("JOIN collection_recordings cr ON cr.collection_id = collections.id").
+		Where("cr.recording_id = ? AND collections.user_id = ? AND collections.deleted_at IS NULL", recordingID, userID).
+		Find(&collections).Error
+	return collections, err
+}
+
+// buildInsertPlaceholders creates "(?,?,?),(?,?,?)..." for n rows.
+func buildInsertPlaceholders(n int) string {
+	if n == 0 {
+		return ""
+	}
+	s := ""
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			s += ","
+		}
+		s += "(?,?,CURRENT_TIMESTAMP)"
+	}
+	return s
+}
+
+func buildInsertArgs(rows []models.CollectionRecording) []interface{} {
+	args := make([]interface{}, 0, len(rows)*2)
+	for _, r := range rows {
+		args = append(args, r.CollectionID, r.RecordingID)
+	}
+	return args
+}
