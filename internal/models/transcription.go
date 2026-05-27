@@ -10,6 +10,7 @@ import (
 // TranscriptionJob represents a transcription job record
 type TranscriptionJob struct {
 	ID                    string         `json:"id" gorm:"primaryKey;type:varchar(36)"`
+	UserID                uint           `json:"user_id" gorm:"not null;index;default:0"`
 	Title                 *string        `json:"title,omitempty" gorm:"type:text"`
 	Status                JobStatus      `json:"status" gorm:"type:varchar(20);not null;default:'pending'"`
 	AudioPath             string         `json:"audio_path" gorm:"type:text;not null"`
@@ -146,10 +147,14 @@ type User struct {
 	ID                       uint      `json:"id" gorm:"primaryKey"`
 	Username                 string    `json:"username" gorm:"uniqueIndex;not null;type:varchar(50)"`
 	Password                 string    `json:"-" gorm:"not null;type:varchar(255)"`
-	DefaultProfileID            *string   `json:"default_profile_id,omitempty" gorm:"type:varchar(36)"`
-	DefaultSummaryTemplateID    *string   `json:"default_summary_template_id,omitempty" gorm:"type:varchar(36)"`
-	AutoTranscriptionEnabled    bool      `json:"auto_transcription_enabled" gorm:"not null;default:false"`
-	Language                    string    `json:"language" gorm:"type:varchar(10);not null;default:''"`
+	Role                     string    `json:"role" gorm:"type:varchar(20);not null;default:'user'"` // 'admin' | 'user'
+	FullName                 *string   `json:"full_name,omitempty" gorm:"type:varchar(200)"`
+	Email                    *string   `json:"email,omitempty" gorm:"type:varchar(255);index"`
+	IsActive                 bool      `json:"is_active" gorm:"not null;default:true"`
+	DefaultProfileID         *string   `json:"default_profile_id,omitempty" gorm:"type:varchar(36)"`
+	DefaultSummaryTemplateID *string   `json:"default_summary_template_id,omitempty" gorm:"type:varchar(36)"`
+	AutoTranscriptionEnabled bool      `json:"auto_transcription_enabled" gorm:"not null;default:false"`
+	Language                 string    `json:"language" gorm:"type:varchar(10);not null;default:''"`
 	CreatedAt                time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt                time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
@@ -157,6 +162,7 @@ type User struct {
 // APIKey represents an API key for external authentication
 type APIKey struct {
 	ID          uint    `json:"id" gorm:"primaryKey"`
+	UserID      uint    `json:"user_id" gorm:"not null;index;default:0"`
 	Key         string  `json:"key" gorm:"uniqueIndex;not null;type:varchar(255)"`
 	Name        string  `json:"name" gorm:"not null;type:varchar(100)"`
 	Description *string `json:"description,omitempty" gorm:"type:text"`
@@ -179,6 +185,7 @@ func (ak *APIKey) BeforeCreate(tx *gorm.DB) error {
 // TranscriptionProfile represents a saved transcription configuration profile
 type TranscriptionProfile struct {
 	ID          string         `json:"id" gorm:"primaryKey;type:varchar(36)"`
+	OwnerUserID *uint          `json:"owner_user_id" gorm:"index"` // NULL = global (visible to all)
 	Name        string         `json:"name" gorm:"type:varchar(255);not null"`
 	Description *string        `json:"description,omitempty" gorm:"type:text"`
 	IsDefault   bool           `json:"is_default" gorm:"type:boolean;default:false"`
@@ -195,11 +202,16 @@ func (tp *TranscriptionProfile) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// BeforeSave ensures only one profile can be default
+// BeforeSave ensures only one profile can be default within the same ownership scope.
 func (tp *TranscriptionProfile) BeforeSave(tx *gorm.DB) error {
 	if tp.IsDefault {
-		// Set all other profiles to not default
-		if err := tx.Model(&TranscriptionProfile{}).Where("id != ?", tp.ID).Update("is_default", false).Error; err != nil {
+		q := tx.Model(&TranscriptionProfile{}).Where("id != ?", tp.ID)
+		if tp.OwnerUserID == nil {
+			q = q.Where("owner_user_id IS NULL")
+		} else {
+			q = q.Where("owner_user_id = ?", *tp.OwnerUserID)
+		}
+		if err := q.Update("is_default", false).Error; err != nil {
 			return err
 		}
 	}
@@ -232,6 +244,7 @@ func (lc *LLMConfig) BeforeSave(tx *gorm.DB) error {
 // ChatSession represents a chat session with a transcript
 type ChatSession struct {
 	ID              string     `json:"id" gorm:"primaryKey;type:varchar(36)"`
+	UserID          uint       `json:"user_id" gorm:"not null;index;default:0"`
 	JobID           string     `json:"job_id" gorm:"type:varchar(36);not null"`
 	TranscriptionID string     `json:"transcription_id" gorm:"type:varchar(36);not null;index"`
 	Title           string     `json:"title" gorm:"type:varchar(255);not null"`

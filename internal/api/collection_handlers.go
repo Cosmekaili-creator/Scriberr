@@ -25,6 +25,33 @@ func (h *Handler) currentUserID(c *gin.Context) (uint, bool) {
 	return id, ok
 }
 
+// currentRole returns the role string from context (empty if not set).
+func (h *Handler) currentRole(c *gin.Context) string {
+	v, _ := c.Get("role")
+	s, _ := v.(string)
+	return s
+}
+
+// requireJobOwner loads the job and confirms the current user owns it.
+// Returns 404 on failure (not 403) to avoid leaking existence of others' jobs.
+func (h *Handler) requireJobOwner(c *gin.Context, jobID string) (*models.TranscriptionJob, bool) {
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return nil, false
+	}
+	job, err := h.jobRepo.FindByID(c.Request.Context(), jobID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
+		return nil, false
+	}
+	if job.UserID != userID {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
+		return nil, false
+	}
+	return job, true
+}
+
 // ---- CRUD ----
 
 func (h *Handler) ListCollections(c *gin.Context) {

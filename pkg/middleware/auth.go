@@ -18,9 +18,13 @@ func AuthMiddleware(authService *auth.AuthService) gin.HandlerFunc {
 		// Check for API key first
 		apiKey := c.GetHeader("X-API-Key")
 		if apiKey != "" {
-			if validateAPIKey(apiKey) {
+			key, user, ok := validateAPIKey(apiKey)
+			if ok {
 				c.Set("auth_type", "api_key")
-				c.Set("api_key", apiKey)
+				c.Set("api_key", key.Key)
+				c.Set("user_id", key.UserID)
+				c.Set("username", user.Username)
+				c.Set("role", user.Role)
 				c.Next()
 				return
 			}
@@ -30,7 +34,6 @@ func AuthMiddleware(authService *auth.AuthService) gin.HandlerFunc {
 		var token string
 		authHeader := c.GetHeader("Authorization")
 		if authHeader != "" {
-			// Extract token from "Bearer <token>"
 			parts := strings.SplitN(authHeader, " ", 2)
 			if len(parts) == 2 && parts[0] == "Bearer" {
 				token = parts[1]
@@ -60,16 +63,16 @@ func AuthMiddleware(authService *auth.AuthService) gin.HandlerFunc {
 		c.Set("auth_type", "jwt")
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
+		c.Set("role", claims.Role)
 		c.Next()
 	}
 }
 
-// validateAPIKey validates an API key against the database and updates last used timestamp
-func validateAPIKey(key string) bool {
+// validateAPIKey validates an API key, updates last_used, and returns the key + owning user.
+func validateAPIKey(key string) (*models.APIKey, *models.User, bool) {
 	var apiKey models.APIKey
-	result := database.DB.Where("key = ? AND is_active = ?", key, true).First(&apiKey)
-	if result.Error != nil {
-		return false
+	if err := database.DB.Where("key = ? AND is_active = ?", key, true).First(&apiKey).Error; err != nil {
+		return nil, nil, false
 	}
 
 	// Update last used timestamp
@@ -77,7 +80,13 @@ func validateAPIKey(key string) bool {
 	apiKey.LastUsed = &now
 	database.DB.Save(&apiKey)
 
-	return true
+	// Load the owning user to resolve role
+	var user models.User
+	if err := database.DB.First(&user, apiKey.UserID).Error; err != nil {
+		return nil, nil, false
+	}
+
+	return &apiKey, &user, true
 }
 
 // APIKeyOnlyMiddleware only allows API key authentication
@@ -90,14 +99,18 @@ func APIKeyOnlyMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		if !validateAPIKey(apiKey) {
+		key, user, ok := validateAPIKey(apiKey)
+		if !ok {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid API key"})
 			c.Abort()
 			return
 		}
 
 		c.Set("auth_type", "api_key")
-		c.Set("api_key", apiKey)
+		c.Set("api_key", key.Key)
+		c.Set("user_id", key.UserID)
+		c.Set("username", user.Username)
+		c.Set("role", user.Role)
 		c.Next()
 	}
 }
@@ -130,6 +143,7 @@ func JWTOnlyMiddleware(authService *auth.AuthService) gin.HandlerFunc {
 		c.Set("auth_type", "jwt")
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
+		c.Set("role", claims.Role)
 		c.Next()
 	}
 }

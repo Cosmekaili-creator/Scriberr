@@ -67,6 +67,7 @@ func (suite *APIHandlerTestSuite) TestGetChatSessions() {
 		ID:              session1.ID + "-2",
 		JobID:           job.ID,
 		TranscriptionID: job.ID,
+		UserID:          suite.helper.TestUser.ID,
 		Title:           "Session 2",
 		Model:           "gpt-4",
 		Provider:        "openai",

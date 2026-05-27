@@ -146,16 +146,21 @@ func (h *Handler) GetChatModels(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Security BearerAuth
 func (h *Handler) CreateChatSession(c *gin.Context) {
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	var req ChatCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Verify transcription exists and has completed transcript
-	transcription, err := h.jobRepo.FindByID(c.Request.Context(), req.TranscriptionID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Transcription not found"})
+	// Verify transcription exists, belongs to user, and has completed transcript
+	transcription, ok := h.requireJobOwner(c, req.TranscriptionID)
+	if !ok {
 		return
 	}
 
@@ -165,7 +170,7 @@ func (h *Handler) CreateChatSession(c *gin.Context) {
 	}
 
 	// Verify LLM service is available
-	_, _, err = h.getLLMService(c.Request.Context())
+	_, _, err := h.getLLMService(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -179,7 +184,8 @@ func (h *Handler) CreateChatSession(c *gin.Context) {
 
 	now := time.Now()
 	chatSession := &models.ChatSession{
-		JobID:           req.TranscriptionID, // Use same ID for JobID as TranscriptionID
+		UserID:          userID,
+		JobID:           req.TranscriptionID,
 		TranscriptionID: req.TranscriptionID,
 		Title:           title,
 		Model:           req.Model,
@@ -228,7 +234,13 @@ func (h *Handler) GetChatSessions(c *gin.Context) {
 		return
 	}
 
-	sessions, err := h.chatRepo.ListByJob(c.Request.Context(), transcriptionID)
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	sessions, err := h.chatRepo.ListByJobAndUser(c.Request.Context(), transcriptionID, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get chat sessions"})
 		return
@@ -295,13 +307,15 @@ func (h *Handler) GetChatSession(c *gin.Context) {
 		return
 	}
 
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	session, err := h.chatRepo.GetSessionWithMessages(c.Request.Context(), sessionID)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Chat session not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get chat session"})
+	if err != nil || session.UserID != userID {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Chat session not found"})
 		return
 	}
 
@@ -368,20 +382,22 @@ func (h *Handler) SendChatMessage(c *gin.Context) {
 		return
 	}
 
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	var req ChatMessageRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Get chat session
+	// Get chat session and verify ownership
 	session, err := h.chatRepo.GetSessionWithTranscription(c.Request.Context(), sessionID)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Chat session not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get chat session"})
+	if err != nil || session.UserID != userID {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Chat session not found"})
 		return
 	}
 
@@ -699,6 +715,12 @@ func (h *Handler) UpdateChatSessionTitle(c *gin.Context) {
 		return
 	}
 
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	var req struct {
 		Title string `json:"title" binding:"required,min=1,max=255"`
 	}
@@ -708,12 +730,8 @@ func (h *Handler) UpdateChatSessionTitle(c *gin.Context) {
 	}
 
 	session, err := h.chatRepo.FindByID(c.Request.Context(), sessionID)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Chat session not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get chat session"})
+	if err != nil || session.UserID != userID {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Chat session not found"})
 		return
 	}
 
@@ -757,11 +775,19 @@ func (h *Handler) DeleteChatSession(c *gin.Context) {
 		return
 	}
 
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	session, err := h.chatRepo.FindByID(c.Request.Context(), sessionID)
+	if err != nil || session.UserID != userID {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Chat session not found"})
+		return
+	}
+
 	if err := h.chatRepo.DeleteSession(c.Request.Context(), sessionID); err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Chat session not found"})
-			return
-		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete chat session"})
 		return
 	}
@@ -808,13 +834,15 @@ func (h *Handler) AutoGenerateChatTitle(c *gin.Context) {
 		return
 	}
 
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	session, err := h.chatRepo.FindByID(c.Request.Context(), sessionID)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Chat session not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get chat session"})
+	if err != nil || session.UserID != userID {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Chat session not found"})
 		return
 	}
 

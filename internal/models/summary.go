@@ -10,6 +10,7 @@ import (
 // SummaryTemplate represents a saved summarization prompt/template
 type SummaryTemplate struct {
 	ID                 string    `json:"id" gorm:"primaryKey;type:varchar(36)"`
+	OwnerUserID        *uint     `json:"owner_user_id" gorm:"index"` // NULL = global (visible to all)
 	Name               string    `json:"name" gorm:"type:varchar(255);not null"`
 	Description        *string   `json:"description,omitempty" gorm:"type:text"`
 	Model              string    `json:"model" gorm:"type:varchar(255);not null;default:''"`
@@ -36,6 +37,7 @@ type SummarySetting struct {
 // Summary stores a generated summary linked to a transcription
 type Summary struct {
 	ID              string    `json:"id" gorm:"primaryKey;type:varchar(36)"`
+	UserID          uint      `json:"user_id" gorm:"not null;index;default:0"`
 	TranscriptionID string    `json:"transcription_id" gorm:"type:varchar(36);index;not null"`
 	TemplateID      *string   `json:"template_id,omitempty" gorm:"type:varchar(36)"`
 	Model           string    `json:"model" gorm:"type:varchar(255);not null"`

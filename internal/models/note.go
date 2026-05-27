@@ -7,6 +7,7 @@ import (
 // Note represents an annotation attached to a transcription
 type Note struct {
 	ID              string `json:"id" gorm:"primaryKey;type:varchar(36)"`
+	UserID          uint   `json:"user_id" gorm:"not null;index;default:0"`
 	TranscriptionID string `json:"transcription_id" gorm:"type:varchar(36);not null;index"`
 
 	// Indexed selection into transcript by word positions

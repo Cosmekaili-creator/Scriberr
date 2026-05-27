@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { RequireAdmin } from '@/components/RequireAdmin'
 
 // Lazy load route components for better performance
 const Dashboard = lazy(() => import("@/features/transcription/components/Dashboard").then(module => ({ default: module.Dashboard })));
@@ -9,6 +10,7 @@ const CLISettings = lazy(() => import('@/features/settings/pages/CLISettingsPage
 const CLIAuthConfirmation = lazy(() => import('./features/auth/components/CLIAuthConfirmation').then(module => ({ default: module.CLIAuthConfirmation })))
 const CollectionsPage = lazy(() => import('./features/collections/CollectionsPage').then(module => ({ default: module.CollectionsPage })))
 const CollectionDetailPage = lazy(() => import('./features/collections/CollectionDetailPage').then(module => ({ default: module.CollectionDetailPage })))
+const AdminUsersPage = lazy(() => import('./features/admin/AdminUsersPage').then(module => ({ default: module.AdminUsersPage })))
 
 // Loading component
 const PageLoader = () => (
@@ -24,12 +26,14 @@ function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/audio/:audioId" element={<AudioDetailView />} />
 
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/settings/cli" element={<CLISettings />} />
+        <Route path="/settings" element={<RequireAdmin><Settings /></RequireAdmin>} />
+        <Route path="/settings/cli" element={<RequireAdmin><CLISettings /></RequireAdmin>} />
         <Route path="/auth/cli/authorize" element={<CLIAuthConfirmation />} />
 
         <Route path="/collections" element={<CollectionsPage />} />
         <Route path="/collections/:id" element={<CollectionDetailPage />} />
+
+        <Route path="/admin/users" element={<RequireAdmin><AdminUsersPage /></RequireAdmin>} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

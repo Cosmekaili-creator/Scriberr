@@ -972,4 +972,42 @@ export const fr: Record<string, string> = {
   'collections.summarizeResult': 'Résumé',
   'collections.backToCollections': 'Retour aux collections',
   'collections.addedToCollection': 'Ajouté à « {name} »',
+
+  // Admin
+  'header.adminUsers': 'Utilisateurs',
+  'admin.users.title': 'Gestion des utilisateurs',
+  'admin.users.create': 'Nouvel utilisateur',
+  'admin.users.createTitle': 'Créer un utilisateur',
+  'admin.users.username': 'Nom d\'utilisateur',
+  'admin.users.usernamePlaceholder': 'Saisir le nom d\'utilisateur',
+  'admin.users.password': 'Mot de passe',
+  'admin.users.newPassword': 'Nouveau mot de passe',
+  'admin.users.passwordPlaceholder': 'Saisir le mot de passe (8 car. min.)',
+  'admin.users.role': 'Rôle',
+  'admin.users.status': 'Statut',
+  'admin.users.actions': 'Actions',
+  'admin.users.active': 'Actif',
+  'admin.users.inactive': 'Désactivé',
+  'admin.users.disable': 'Désactiver',
+  'admin.users.enable': 'Activer',
+  'admin.users.resetPassword': 'Réinitialiser le mot de passe',
+  'admin.users.resetPasswordTitle': 'Réinitialiser le mot de passe de {username}',
+  'admin.users.empty': 'Aucun utilisateur trouvé',
+  'admin.users.fullName': 'Nom complet',
+  'admin.users.fullNamePlaceholder': 'Saisir le nom complet',
+  'admin.users.email': 'Email',
+  'admin.users.emailPlaceholder': 'Saisir l\'adresse email',
+  'admin.users.confirmPassword': 'Confirmer le mot de passe',
+  'admin.users.confirmPasswordPlaceholder': 'Répéter le mot de passe',
+  'admin.users.passwordMismatch': 'Les mots de passe ne correspondent pas',
+
+  // Common
+  'common.cancel': 'Annuler',
+  'common.saving': 'Enregistrement…',
+  'common.optional': 'facultatif',
+  'common.global': 'Global',
+
+  // Global toggle
+  'settings.profile.makeGlobal': 'Rendre global (visible par tous les utilisateurs)',
+  'settings.summary.makeGlobal': 'Rendre global (visible par tous les utilisateurs)',
 };

@@ -14,13 +14,32 @@ Fork of [Scriberr](https://github.com/rishikanthc/Scriberr), significantly exten
 
 ## Features
 
-- Local transcription via WhisperX, Parakeet, Canary, Voxtral
-- Cloud transcription via AssemblyAI, Deepgram, OpenAI Whisper
+### Transcription
+- Local models: WhisperX, Parakeet, Canary, Voxtral
+- Cloud providers: AssemblyAI, Deepgram, OpenAI Whisper
 - Speaker diarization (PyAnnote, SortFormer)
-- AI summaries and chat (OpenAI-compatible)
-- Collections for grouping and batch summarizing recordings
+- Transcription profiles — save and reuse parameter sets; admins can publish global profiles visible to all users
+
+### AI & summaries
+- AI summaries with reusable prompt templates; admins can publish global templates
+- In-recording chat (OpenAI-compatible)
+- Collections for grouping and batch-summarizing recordings
+
+### Multi-user
+- Multiple accounts with `admin` and `user` roles
+- Admin panel: create users, enable/disable accounts, reset passwords, set full name and email
+- All data (jobs, notes, API keys, collections, chat sessions) scoped per user
+- Auto-transcription on upload and default profile/template configurable per user
+- Session revocation on account disable
+
+### Automation & integration
 - CLI watcher for automated folder upload
 - Webhook callbacks on job completion
+- Per-job API key override for all cloud providers
+
+### Interface
+- Inline transcript editing and speaker renaming
+- Compact and timeline transcript views with playback speed control
 - French / English UI
 
 ## Quick start (Docker)

@@ -19,6 +19,7 @@ import (
 // QuickTranscriptionJob represents a temporary transcription job
 type QuickTranscriptionJob struct {
 	ID           string                `json:"id"`
+	UserID       uint                  `json:"user_id"`
 	Status       models.JobStatus      `json:"status"`
 	AudioPath    string                `json:"audio_path"`
 	Transcript   *string               `json:"transcript,omitempty"`
@@ -64,7 +65,7 @@ func NewQuickTranscriptionService(cfg *config.Config, unifiedProcessor *UnifiedJ
 }
 
 // SubmitQuickJob creates and processes a temporary transcription job
-func (qs *QuickTranscriptionService) SubmitQuickJob(audioData io.Reader, filename string, params models.WhisperXParams) (*QuickTranscriptionJob, error) {
+func (qs *QuickTranscriptionService) SubmitQuickJob(audioData io.Reader, filename string, params models.WhisperXParams, userID uint) (*QuickTranscriptionJob, error) {
 	// Generate unique job ID
 	jobID := uuid.New().String()
 
@@ -89,6 +90,7 @@ func (qs *QuickTranscriptionService) SubmitQuickJob(audioData io.Reader, filenam
 	now := time.Now()
 	job := &QuickTranscriptionJob{
 		ID:         jobID,
+		UserID:     userID,
 		Status:     models.StatusPending,
 		AudioPath:  audioPath,
 		Parameters: params,

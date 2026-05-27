@@ -7,6 +7,7 @@ import { useAuth } from "@/features/auth/hooks/useAuth";
 import { FormField, SelectField, SwitchField, inputClassName } from "@/components/transcription/FormHelpers";
 import { Loader2 } from "lucide-react";
 import { useTranslation } from "@/i18n";
+import { Globe } from "lucide-react";
 
 export interface SummaryTemplate {
   id?: string;
@@ -15,6 +16,8 @@ export interface SummaryTemplate {
   model?: string;
   prompt: string;
   include_speaker_info?: boolean;
+  owner_user_id?: string | null;
+  is_global?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -24,15 +27,17 @@ interface SummaryTemplateDialogProps {
   onOpenChange: (open: boolean) => void;
   onSave: (tpl: Omit<SummaryTemplate, 'created_at' | 'updated_at'>) => Promise<void> | void;
   initial?: SummaryTemplate | null;
+  showGlobalToggle?: boolean;
 }
 
-export function SummaryTemplateDialog({ open, onOpenChange, onSave, initial }: SummaryTemplateDialogProps) {
+export function SummaryTemplateDialog({ open, onOpenChange, onSave, initial, showGlobalToggle }: SummaryTemplateDialogProps) {
   const { t } = useTranslation();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [model, setModel] = useState("");
   const [prompt, setPrompt] = useState("");
   const [includeSpeakerInfo, setIncludeSpeakerInfo] = useState(false);
+  const [isGlobal, setIsGlobal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [models, setModels] = useState<string[]>([]);
   const { getAuthHeaders } = useAuth();
@@ -44,6 +49,7 @@ export function SummaryTemplateDialog({ open, onOpenChange, onSave, initial }: S
       setModel(initial?.model || "");
       setPrompt(initial?.prompt || "");
       setIncludeSpeakerInfo(initial?.include_speaker_info || false);
+      setIsGlobal(false);
       // Load models when dialog opens
       (async () => {
         try {
@@ -70,7 +76,8 @@ export function SummaryTemplateDialog({ open, onOpenChange, onSave, initial }: S
         description: description.trim() || undefined,
         model: model.trim(),
         prompt: prompt.trim(),
-        include_speaker_info: includeSpeakerInfo
+        include_speaker_info: includeSpeakerInfo,
+        is_global: showGlobalToggle ? isGlobal : undefined,
       });
       onOpenChange(false);
     } finally {
@@ -152,6 +159,22 @@ export function SummaryTemplateDialog({ open, onOpenChange, onSave, initial }: S
             checked={includeSpeakerInfo}
             onCheckedChange={setIncludeSpeakerInfo}
           />
+
+          {/* Make Global (admins only, create mode) */}
+          {showGlobalToggle && (
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isGlobal}
+                onChange={(e) => setIsGlobal(e.target.checked)}
+                className="h-4 w-4 rounded border-[var(--border-subtle)] accent-[var(--brand-solid)]"
+              />
+              <Globe className="h-3.5 w-3.5 text-[var(--brand-solid)]" />
+              <span className="text-sm text-[var(--text-secondary)]">
+                {t('settings.summary.makeGlobal')}
+              </span>
+            </label>
+          )}
         </div>
 
         {/* Footer */}

@@ -14,6 +14,7 @@ interface TranscriptionProfile {
 	name: string;
 	description?: string;
 	is_default: boolean;
+	owner_user_id?: string | null;
 	parameters: WhisperXParams;
 	created_at: string;
 	updated_at: string;
@@ -32,7 +33,7 @@ export function ProfileSettings() {
 	const [profiles, setProfiles] = useState<TranscriptionProfile[]>([]);
 	const [defaultProfile, setDefaultProfile] = useState<TranscriptionProfile | null>(null);
 	const [isLoadingProfiles, setIsLoadingProfiles] = useState(true);
-	const { getAuthHeaders } = useAuth();
+	const { getAuthHeaders, isAdmin } = useAuth();
 
 	// User settings state
 	const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
@@ -179,7 +180,7 @@ export function ProfileSettings() {
 			}
 
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
-			const { profileName: _pn, profileDescription: _pd, ...paramRest } = payload as any;
+			const { profileName: _pn, profileDescription: _pd, isGlobal: _ig, ...paramRest } = payload as any;
 			const body = {
 				name,
 				description: description || undefined,
@@ -202,7 +203,7 @@ export function ProfileSettings() {
 				res = await fetch(`/api/v1/profiles`, {
 					method: "POST",
 					headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-					body: JSON.stringify(body),
+					body: JSON.stringify({ ...body, is_global: (payload as any).isGlobal ?? false }),
 				});
 			}
 
@@ -354,6 +355,7 @@ export function ProfileSettings() {
 				}}
 				onStartTranscription={handleProfileSaved}
 				isProfileMode={true}
+				showGlobalToggle={isAdmin && !editingProfile}
 				initialParams={editingProfile?.parameters}
 				initialName={editingProfile?.name}
 				initialDescription={editingProfile?.description}

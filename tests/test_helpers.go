@@ -127,6 +127,8 @@ func (h *TestHelper) createTestCredentials(t *testing.T) {
 	user := models.User{
 		Username: "testuser",
 		Password: hashedPassword,
+		Role:     "admin",
+		IsActive: true,
 	}
 
 	result := h.DB.Create(&user)
@@ -138,11 +140,12 @@ func (h *TestHelper) createTestCredentials(t *testing.T) {
 	assert.NoError(t, err)
 	h.TestToken = token
 
-	// Create test API key
+	// Create test API key — must belong to the test user so API-key auth resolves the user
 	apiKey := models.APIKey{
 		Key:      "test-api-key-" + strings.ReplaceAll(t.Name(), "/", "_"),
 		Name:     "Test API Key for " + strings.ReplaceAll(t.Name(), "/", "_"),
 		IsActive: true,
+		UserID:   user.ID,
 	}
 
 	result = h.DB.Create(&apiKey)
@@ -150,13 +153,14 @@ func (h *TestHelper) createTestCredentials(t *testing.T) {
 	h.TestAPIKey = apiKey.Key
 }
 
-// CreateTestTranscriptionJob creates a test transcription job
+// CreateTestTranscriptionJob creates a test transcription job owned by the test user
 func (h *TestHelper) CreateTestTranscriptionJob(t *testing.T, title string) *models.TranscriptionJob {
 	// Let GORM assign a unique UUID via model hook to avoid ID collisions
 	job := &models.TranscriptionJob{
 		Title:     &title,
 		Status:    models.StatusPending,
 		AudioPath: "test/path/audio.mp3",
+		UserID:    h.TestUser.ID,
 		Parameters: models.WhisperXParams{
 			Model:       "base",
 			BatchSize:   16,
@@ -190,10 +194,11 @@ func (h *TestHelper) CreateTestProfile(t *testing.T, name string, isDefault bool
 	return profile
 }
 
-// CreateTestNote creates a test note for a transcription
+// CreateTestNote creates a test note for a transcription owned by the test user
 func (h *TestHelper) CreateTestNote(t *testing.T, transcriptionID string) *models.Note {
 	note := &models.Note{
 		ID:              "test-note-" + strings.ReplaceAll(t.Name(), "/", "_"),
+		UserID:          h.TestUser.ID,
 		TranscriptionID: transcriptionID,
 		StartWordIndex:  0,
 		EndWordIndex:    5,
@@ -223,10 +228,11 @@ func (h *TestHelper) CreateTestSummaryTemplate(t *testing.T, name string) *model
 	return template
 }
 
-// CreateTestChatSession creates a test chat session
+// CreateTestChatSession creates a test chat session owned by the test user
 func (h *TestHelper) CreateTestChatSession(t *testing.T, transcriptionID string) *models.ChatSession {
 	session := &models.ChatSession{
 		ID:              "test-chat-session-" + strings.ReplaceAll(t.Name(), "/", "_"),
+		UserID:          h.TestUser.ID,
 		JobID:           transcriptionID,
 		TranscriptionID: transcriptionID,
 		Title:           "Test Chat Session",
@@ -301,8 +307,8 @@ func (m *MockJobRepository) FindWithAssociations(ctx context.Context, id string)
 	return args.Get(0).(*models.TranscriptionJob), args.Error(1)
 }
 
-func (m *MockJobRepository) ListByUser(ctx context.Context, userID uint, offset, limit int) ([]models.TranscriptionJob, int64, error) {
-	args := m.Called(ctx, userID, offset, limit)
+func (m *MockJobRepository) ListByUserWithParams(ctx context.Context, userID uint, offset, limit int, sortBy, sortOrder, searchQuery string, updatedAfter *time.Time) ([]models.TranscriptionJob, int64, error) {
+	args := m.Called(ctx, userID, offset, limit, sortBy, sortOrder, searchQuery, updatedAfter)
 	return args.Get(0).([]models.TranscriptionJob), args.Get(1).(int64), args.Error(2)
 }
 

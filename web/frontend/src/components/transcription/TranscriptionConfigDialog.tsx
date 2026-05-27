@@ -79,9 +79,10 @@ export interface WhisperXParams {
 interface TranscriptionConfigDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onStartTranscription: (params: WhisperXParams & { profileName?: string; profileDescription?: string }) => void;
+    onStartTranscription: (params: WhisperXParams & { profileName?: string; profileDescription?: string; isGlobal?: boolean }) => void;
     loading?: boolean;
     isProfileMode?: boolean;
+    showGlobalToggle?: boolean;
     initialParams?: WhisperXParams;
     initialName?: string;
     initialDescription?: string;
@@ -220,11 +221,13 @@ export const TranscriptionConfigDialog = memo(function TranscriptionConfigDialog
     initialName = "",
     initialDescription = "",
     isMultiTrack = false,
+    showGlobalToggle = false,
     title,
 }: TranscriptionConfigDialogProps) {
     const [params, setParams] = useState<WhisperXParams>(DEFAULT_PARAMS);
     const [profileName, setProfileName] = useState("");
     const [profileDescription, setProfileDescription] = useState("");
+    const [isGlobal, setIsGlobal] = useState(false);
 
     // OpenAI validation state
     const [isValidating, setIsValidating] = useState(false);
@@ -245,6 +248,7 @@ export const TranscriptionConfigDialog = memo(function TranscriptionConfigDialog
             });
             setProfileName(initialName);
             setProfileDescription(initialDescription);
+            setIsGlobal(false);
         }
     }, [open, initialParams, initialName, initialDescription, isMultiTrack]);
 
@@ -292,7 +296,7 @@ export const TranscriptionConfigDialog = memo(function TranscriptionConfigDialog
 
     const handleSubmit = () => {
         if (isProfileMode) {
-            onStartTranscription({ ...params, profileName, profileDescription });
+            onStartTranscription({ ...params, profileName, profileDescription, isGlobal: showGlobalToggle ? isGlobal : undefined });
         } else {
             onStartTranscription(params);
         }
@@ -348,6 +352,19 @@ export const TranscriptionConfigDialog = memo(function TranscriptionConfigDialog
                                     rows={2}
                                 />
                             </FormField>
+                            {showGlobalToggle && (
+                                <label className="flex items-center gap-2 cursor-pointer select-none">
+                                    <input
+                                        type="checkbox"
+                                        checked={isGlobal}
+                                        onChange={(e) => setIsGlobal(e.target.checked)}
+                                        className="h-4 w-4 rounded border-[var(--border-subtle)] accent-[var(--brand-solid)]"
+                                    />
+                                    <span className="text-sm text-[var(--text-secondary)]">
+                                        {t('settings.profile.makeGlobal')}
+                                    </span>
+                                </label>
+                            )}
                         </div>
                     )}
 

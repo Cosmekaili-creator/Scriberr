@@ -54,6 +54,7 @@ type UnifiedTranscriptionService struct {
 	defaultModelIDs       map[string]string      // Default model IDs for each task type
 	multiTrackTranscriber *MultiTrackTranscriber // For termination support
 	jobRepo               repository.JobRepository
+	usageRepo             repository.UserUsageRepository
 	webhookService        *webhook.Service
 	broadcaster           *sse.Broadcaster
 }
@@ -79,6 +80,11 @@ func NewUnifiedTranscriptionService(jobRepo repository.JobRepository, tempDir, o
 // SetBroadcaster sets the SSE broadcaster for the service
 func (u *UnifiedTranscriptionService) SetBroadcaster(b *sse.Broadcaster) {
 	u.broadcaster = b
+}
+
+// SetUsageRepo sets the usage repository for tracking per-user resource consumption
+func (u *UnifiedTranscriptionService) SetUsageRepo(r repository.UserUsageRepository) {
+	u.usageRepo = r
 }
 
 // Initialize prepares all registered models for use
@@ -207,6 +213,22 @@ func (u *UnifiedTranscriptionService) ProcessJob(ctx context.Context, jobID stri
 
 	// Success
 	updateExecutionStatus(models.StatusCompleted, "")
+
+	// Track per-user usage asynchronously
+	if u.usageRepo != nil && job.UserID != 0 {
+		go func() {
+			var diskDelta int64
+			if info, err := os.Stat(job.AudioPath); err == nil {
+				diskDelta = info.Size()
+			}
+			usageCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if err := u.usageRepo.Upsert(usageCtx, job.UserID, diskDelta, 0, 1); err != nil {
+				logger.Error("Failed to update user usage", "user_id", job.UserID, "error", err)
+			}
+		}()
+	}
+
 	logger.Info("Job processed successfully", "job_id", jobID, "duration", time.Since(startTime))
 	return nil
 }

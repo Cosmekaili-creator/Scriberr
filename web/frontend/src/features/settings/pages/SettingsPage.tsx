@@ -24,7 +24,7 @@ import { useSummaryTemplates } from "@/features/transcription/hooks/useTranscrip
 
 export function Settings() {
   const [activeTab, setActiveTab] = useState("transcription");
-  const { getAuthHeaders } = useAuth();
+  const { getAuthHeaders, isAdmin } = useAuth();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [summaryDialogOpen, setSummaryDialogOpen] = useState(false);
@@ -228,13 +228,14 @@ export function Settings() {
               open={summaryDialogOpen}
               onOpenChange={(o) => { setSummaryDialogOpen(o); if (!o) setEditingSummary(null); }}
               initial={editingSummary}
+              showGlobalToggle={isAdmin && !editingSummary}
               onSave={async (tpl) => {
                 const headers: HeadersInit = { 'Content-Type': 'application/json', ...getAuthHeaders() };
                 try {
                   if (tpl.id) {
                     await fetch(`/api/v1/summaries/${tpl.id}`, { method: 'PUT', headers, body: JSON.stringify({ name: tpl.name, description: tpl.description, model: tpl.model, prompt: tpl.prompt, include_speaker_info: tpl.include_speaker_info }) });
                   } else {
-                    await fetch('/api/v1/summaries', { method: 'POST', headers, body: JSON.stringify({ name: tpl.name, description: tpl.description, model: tpl.model, prompt: tpl.prompt, include_speaker_info: tpl.include_speaker_info }) });
+                    await fetch('/api/v1/summaries', { method: 'POST', headers, body: JSON.stringify({ name: tpl.name, description: tpl.description, model: tpl.model, prompt: tpl.prompt, include_speaker_info: tpl.include_speaker_info, is_global: tpl.is_global ?? false }) });
                   }
                 } finally {
                   // Invalidate cache to propagate changes

@@ -110,6 +110,7 @@ func main() {
 	speakerMappingRepo := repository.NewSpeakerMappingRepository(database.DB)
 	refreshTokenRepo := repository.NewRefreshTokenRepository(database.DB)
 	collectionRepo := repository.NewCollectionRepository(database.DB)
+	usageRepo := repository.NewUserUsageRepository(database.DB)
 
 	// Initialize services
 	logger.Startup("service", "Initializing services")
@@ -120,6 +121,7 @@ func main() {
 	logger.Startup("transcription", "Initializing transcription service")
 	unifiedProcessor := transcription.NewUnifiedJobProcessor(jobRepo, cfg.TempDir, cfg.TranscriptsDir)
 	unifiedProcessor.GetUnifiedService().SetBroadcaster(broadcaster)
+	unifiedProcessor.GetUnifiedService().SetUsageRepo(usageRepo)
 
 	// Bootstrap embedded Python environment (for all adapters)
 	logger.Startup("python", "Preparing Python environment")
@@ -162,6 +164,7 @@ func main() {
 		speakerMappingRepo,
 		refreshTokenRepo,
 		collectionRepo,
+		usageRepo,
 		taskQueue,
 		unifiedProcessor,
 		quickTranscriptionService,

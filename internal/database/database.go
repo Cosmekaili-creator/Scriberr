@@ -14,6 +14,9 @@ import (
 	"gorm.io/gorm/logger"
 )
 
+// adminID holds the promoted admin's ID after AutoMigrate + backfill; used by other packages.
+var AdminID uint
+
 // DB is the global database instance
 var DB *gorm.DB
 
@@ -78,8 +81,47 @@ func Initialize(dbPath string) error {
 		&models.RefreshToken{},
 		&models.Collection{},
 		&models.CollectionRecording{},
+		&models.UserUsage{},
+		&models.PasswordResetToken{},
 	); err != nil {
 		return fmt.Errorf("failed to auto migrate: %v", err)
+	}
+
+	// Multi-user backfill (idempotent — safe to re-run on every boot)
+	// 1. Promote the earliest user to admin
+	if err := DB.Exec(`
+		UPDATE users SET role = 'admin'
+		WHERE id = (SELECT MIN(id) FROM users)
+		  AND (role IS NULL OR role = '' OR role = 'user')
+	`).Error; err != nil {
+		return fmt.Errorf("backfill admin role: %v", err)
+	}
+	// 2. Default all remaining users to 'user' role
+	if err := DB.Exec(`UPDATE users SET role = 'user' WHERE role IS NULL OR role = ''`).Error; err != nil {
+		return fmt.Errorf("backfill user role: %v", err)
+	}
+	// 3. Mark all existing users active
+	if err := DB.Exec(`UPDATE users SET is_active = 1 WHERE is_active IS NULL`).Error; err != nil {
+		return fmt.Errorf("backfill is_active: %v", err)
+	}
+	// 4. Backfill user_id = admin's ID on legacy single-user tables
+	var adminID uint
+	if err := DB.Raw(`SELECT id FROM users WHERE role='admin' ORDER BY id ASC LIMIT 1`).Scan(&adminID).Error; err == nil && adminID > 0 {
+		AdminID = adminID
+		for _, q := range []string{
+			`UPDATE transcription_jobs SET user_id = ? WHERE user_id IS NULL OR user_id = 0`,
+			`UPDATE notes SET user_id = ? WHERE user_id IS NULL OR user_id = 0`,
+			`UPDATE summaries SET user_id = ? WHERE user_id IS NULL OR user_id = 0`,
+			`UPDATE chat_sessions SET user_id = ? WHERE user_id IS NULL OR user_id = 0`,
+			`UPDATE api_keys SET user_id = ? WHERE user_id IS NULL OR user_id = 0`,
+			// Profiles and templates: leave owner_user_id NULL (global) for existing rows.
+		} {
+			if err := DB.Exec(q, adminID).Error; err != nil {
+				return fmt.Errorf("backfill user_id on legacy data: %v", err)
+			}
+		}
+		// 5. Seed user_usage row for admin if missing
+		DB.Exec(`INSERT OR IGNORE INTO user_usages (user_id, disk_bytes, transcription_seconds, llm_cost_cents, jobs_completed, updated_at) VALUES (?, 0, 0, 0, 0, CURRENT_TIMESTAMP)`, adminID)
 	}
 
 	// Cleanup duplicate speaker mappings before creating unique index (for backward compatibility)

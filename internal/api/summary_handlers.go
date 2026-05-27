@@ -16,6 +16,7 @@ type SummaryTemplateRequest struct {
 	Model              string  `json:"model" binding:"required,min=1"`
 	Prompt             string  `json:"prompt" binding:"required,min=1"`
 	IncludeSpeakerInfo *bool   `json:"include_speaker_info"`
+	IsGlobal           bool    `json:"is_global"`
 }
 
 type SummarySettingsRequest struct {
@@ -26,19 +27,36 @@ type SummarySettingsResponse struct {
 	DefaultModel string `json:"default_model"`
 }
 
-// ListSummaryTemplates returns all templates
+// canAccessTemplate returns whether a user can read a template.
+func canAccessTemplate(t *models.SummaryTemplate, userID uint) bool {
+	return t.OwnerUserID == nil || *t.OwnerUserID == userID
+}
+
+// canModifyTemplate returns whether a user can edit/delete a template.
+func canModifyTemplate(t *models.SummaryTemplate, userID uint, role string) bool {
+	if t.OwnerUserID == nil {
+		return role == "admin"
+	}
+	return *t.OwnerUserID == userID
+}
+
+// ListSummaryTemplates returns all templates visible to the current user
 // @Summary List summarization templates
-// @Description Get all summarization templates
+// @Description Get all summarization templates visible to the current user
 // @Tags summaries
 // @Produce json
 // @Success 200 {array} models.SummaryTemplate
 // @Security ApiKeyAuth
 // @Security BearerAuth
-// @Security BearerAuth
 // @Router /api/v1/summaries [get]
 func (h *Handler) ListSummaryTemplates(c *gin.Context) {
-	// TODO: Add pagination support
-	items, _, err := h.summaryRepo.List(c.Request.Context(), 0, 1000)
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	items, err := h.summaryRepo.ListVisibleToUser(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch templates"})
 		return
@@ -48,7 +66,6 @@ func (h *Handler) ListSummaryTemplates(c *gin.Context) {
 
 // CreateSummaryTemplate creates a new template
 // @Summary Create summarization template
-// @Description Create a new summarization template
 // @Tags summaries
 // @Accept json
 // @Produce json
@@ -58,14 +75,20 @@ func (h *Handler) ListSummaryTemplates(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Security ApiKeyAuth
 // @Security BearerAuth
-// @Security BearerAuth
 // @Router /api/v1/summaries [post]
 func (h *Handler) CreateSummaryTemplate(c *gin.Context) {
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	var req SummaryTemplateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
 	item := &models.SummaryTemplate{
 		Name:        req.Name,
 		Description: req.Description,
@@ -77,6 +100,13 @@ func (h *Handler) CreateSummaryTemplate(c *gin.Context) {
 	if req.IncludeSpeakerInfo != nil {
 		item.IncludeSpeakerInfo = *req.IncludeSpeakerInfo
 	}
+
+	if req.IsGlobal && h.currentRole(c) == "admin" {
+		item.OwnerUserID = nil
+	} else {
+		item.OwnerUserID = &userID
+	}
+
 	if err := h.summaryRepo.Create(c.Request.Context(), item); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create template"})
 		return
@@ -86,21 +116,24 @@ func (h *Handler) CreateSummaryTemplate(c *gin.Context) {
 
 // GetSummaryTemplate fetches one by id
 // @Summary Get summarization template
-// @Description Get a summarization template by ID
 // @Tags summaries
 // @Produce json
 // @Param id path string true "Template ID"
 // @Success 200 {object} models.SummaryTemplate
 // @Failure 404 {object} map[string]string
-// @Failure 500 {object} map[string]string
 // @Security ApiKeyAuth
-// @Security BearerAuth
 // @Security BearerAuth
 // @Router /api/v1/summaries/{id} [get]
 func (h *Handler) GetSummaryTemplate(c *gin.Context) {
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	id := c.Param("id")
 	item, err := h.summaryRepo.FindByID(c.Request.Context(), id)
-	if err != nil {
+	if err != nil || !canAccessTemplate(item, userID) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
 		return
 	}
@@ -109,21 +142,22 @@ func (h *Handler) GetSummaryTemplate(c *gin.Context) {
 
 // UpdateSummaryTemplate updates an existing template
 // @Summary Update summarization template
-// @Description Update a summarization template by ID
 // @Tags summaries
 // @Accept json
 // @Produce json
 // @Param id path string true "Template ID"
 // @Param request body SummaryTemplateRequest true "Template payload"
 // @Success 200 {object} models.SummaryTemplate
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
-// @Failure 500 {object} map[string]string
 // @Security ApiKeyAuth
-// @Security BearerAuth
 // @Security BearerAuth
 // @Router /api/v1/summaries/{id} [put]
 func (h *Handler) UpdateSummaryTemplate(c *gin.Context) {
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	id := c.Param("id")
 	var req SummaryTemplateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -131,7 +165,7 @@ func (h *Handler) UpdateSummaryTemplate(c *gin.Context) {
 		return
 	}
 	item, err := h.summaryRepo.FindByID(c.Request.Context(), id)
-	if err != nil {
+	if err != nil || !canModifyTemplate(item, userID, h.currentRole(c)) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
 		return
 	}
@@ -152,7 +186,6 @@ func (h *Handler) UpdateSummaryTemplate(c *gin.Context) {
 
 // DeleteSummaryTemplate deletes a template
 // @Summary Delete summarization template
-// @Description Delete a summarization template by ID
 // @Tags summaries
 // @Produce json
 // @Param id path string true "Template ID"
@@ -161,7 +194,18 @@ func (h *Handler) UpdateSummaryTemplate(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Router /api/v1/summaries/{id} [delete]
 func (h *Handler) DeleteSummaryTemplate(c *gin.Context) {
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	id := c.Param("id")
+	item, err := h.summaryRepo.FindByID(c.Request.Context(), id)
+	if err != nil || !canModifyTemplate(item, userID, h.currentRole(c)) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
+		return
+	}
 	if err := h.summaryRepo.Delete(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete template"})
 		return
@@ -175,7 +219,6 @@ func (h *Handler) DeleteSummaryTemplate(c *gin.Context) {
 // @Tags summaries
 // @Produce json
 // @Success 200 {object} SummarySettingsResponse
-// @Failure 500 {object} map[string]string
 // @Security ApiKeyAuth
 // @Router /api/v1/summaries/settings [get]
 func (h *Handler) GetSummarySettings(c *gin.Context) {
@@ -191,7 +234,7 @@ func (h *Handler) GetSummarySettings(c *gin.Context) {
 	c.JSON(http.StatusOK, SummarySettingsResponse{DefaultModel: s.DefaultModel})
 }
 
-// SaveSummarySettings updates default model (creates row if absent)
+// SaveSummarySettings updates default model (creates row if absent) — admin only (router guard)
 // @Summary Save summary settings
 // @Description Create or update global summarization settings
 // @Tags summaries
@@ -199,8 +242,6 @@ func (h *Handler) GetSummarySettings(c *gin.Context) {
 // @Produce json
 // @Param request body SummarySettingsRequest true "Settings payload"
 // @Success 200 {object} SummarySettingsResponse
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
 // @Security ApiKeyAuth
 // @Router /api/v1/summaries/settings [post]
 func (h *Handler) SaveSummarySettings(c *gin.Context) {
@@ -216,15 +257,6 @@ func (h *Handler) SaveSummarySettings(c *gin.Context) {
 				DefaultModel: req.DefaultModel,
 				UpdatedAt:    time.Now(),
 			}
-			// We can't use Create from BaseRepository because it expects *T, but GetSettings returns *T.
-			// BaseRepository.Create expects *T.
-			// Actually BaseRepository[T] Create takes *T.
-			// But here T is models.SummaryTemplate, NOT models.SummarySetting.
-			// SummaryRepository handles SummaryTemplate.
-			// But GetSettings returns SummarySetting.
-			// So I can't use h.summaryRepo.Create(s) because s is SummarySetting, not SummaryTemplate.
-			// I need to add SaveSettings to SummaryRepository which handles creation too.
-			// I added SaveSettings(ctx, settings).
 			if err := h.summaryRepo.SaveSettings(c.Request.Context(), s); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings"})
 				return

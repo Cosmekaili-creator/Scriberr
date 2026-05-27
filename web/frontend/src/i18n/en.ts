@@ -972,4 +972,42 @@ export const en: Record<string, string> = {
   'collections.summarizeResult': 'Summary',
   'collections.backToCollections': 'Back to collections',
   'collections.addedToCollection': 'Added to "{name}"',
+
+  // Admin
+  'header.adminUsers': 'Users',
+  'admin.users.title': 'User Management',
+  'admin.users.create': 'New User',
+  'admin.users.createTitle': 'Create User',
+  'admin.users.username': 'Username',
+  'admin.users.usernamePlaceholder': 'Enter username',
+  'admin.users.password': 'Password',
+  'admin.users.newPassword': 'New Password',
+  'admin.users.passwordPlaceholder': 'Enter password (min. 8 characters)',
+  'admin.users.role': 'Role',
+  'admin.users.status': 'Status',
+  'admin.users.actions': 'Actions',
+  'admin.users.active': 'Active',
+  'admin.users.inactive': 'Disabled',
+  'admin.users.disable': 'Disable user',
+  'admin.users.enable': 'Enable user',
+  'admin.users.resetPassword': 'Reset password',
+  'admin.users.resetPasswordTitle': 'Reset password for {username}',
+  'admin.users.empty': 'No users found',
+  'admin.users.fullName': 'Full Name',
+  'admin.users.fullNamePlaceholder': 'Enter full name',
+  'admin.users.email': 'Email',
+  'admin.users.emailPlaceholder': 'Enter email address',
+  'admin.users.confirmPassword': 'Confirm Password',
+  'admin.users.confirmPasswordPlaceholder': 'Repeat the password',
+  'admin.users.passwordMismatch': 'Passwords do not match',
+
+  // Common
+  'common.cancel': 'Cancel',
+  'common.saving': 'Saving…',
+  'common.optional': 'optional',
+  'common.global': 'Global',
+
+  // Global toggle
+  'settings.profile.makeGlobal': 'Make global (visible to all users)',
+  'settings.summary.makeGlobal': 'Make global (visible to all users)',
 };

@@ -86,6 +86,7 @@ func (suite *APIHandlerTestSuite) SetupSuite() {
 		speakerMappingRepo,
 		refreshTokenRepo,
 		repository.NewCollectionRepository(suite.helper.DB),
+		repository.NewUserUsageRepository(suite.helper.DB),
 		suite.taskQueue,
 		suite.unifiedProcessor,
 		suite.quickTranscription,

@@ -42,6 +42,10 @@ func (h *Handler) Summarize(c *gin.Context) {
 		return
 	}
 
+	if _, ok := h.requireJobOwner(c, req.TranscriptionID); !ok {
+		return
+	}
+
 	svc, provider, err := h.getLLMService(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -48,6 +49,7 @@ type Handler struct {
 	speakerMappingRepo  repository.SpeakerMappingRepository
 	refreshTokenRepo    repository.RefreshTokenRepository
 	collectionRepo      repository.CollectionRepository
+	usageRepo           repository.UserUsageRepository
 	taskQueue           *queue.TaskQueue
 	unifiedProcessor    *transcription.UnifiedJobProcessor
 	quickTranscription  *transcription.QuickTranscriptionService
@@ -72,6 +74,7 @@ func NewHandler(
 	speakerMappingRepo repository.SpeakerMappingRepository,
 	refreshTokenRepo repository.RefreshTokenRepository,
 	collectionRepo repository.CollectionRepository,
+	usageRepo repository.UserUsageRepository,
 	taskQueue *queue.TaskQueue,
 	unifiedProcessor *transcription.UnifiedJobProcessor,
 	quickTranscription *transcription.QuickTranscriptionService,
@@ -94,6 +97,7 @@ func NewHandler(
 		speakerMappingRepo:  speakerMappingRepo,
 		refreshTokenRepo:    refreshTokenRepo,
 		collectionRepo:      collectionRepo,
+		usageRepo:           usageRepo,
 		taskQueue:           taskQueue,
 		unifiedProcessor:    unifiedProcessor,
 		quickTranscription:  quickTranscription,
@@ -121,6 +125,7 @@ type LoginResponse struct {
 	User  struct {
 		ID       uint   `json:"id"`
 		Username string `json:"username"`
+		Role     string `json:"role"`
 	} `json:"user"`
 }
 
@@ -321,6 +326,11 @@ func (h *Handler) UploadAudio(c *gin.Context) {
 		job.Title = &title
 	}
 
+	// Set owner from authenticated context
+	if uid, ok := h.currentUserID(c); ok {
+		job.UserID = uid
+	}
+
 	// Save to database using Repository
 	if err := h.jobRepo.Create(c.Request.Context(), &job); err != nil {
 		_ = h.fileService.RemoveFile(filePath) // Clean up file
@@ -337,19 +347,22 @@ func (h *Handler) UploadAudio(c *gin.Context) {
 			var profile *models.TranscriptionProfile
 
 			if user.DefaultProfileID != nil {
-				profile, _ = h.profileRepo.FindByID(c.Request.Context(), *user.DefaultProfileID)
+				role, _ := c.Get("role")
+				roleStr, _ := role.(string)
+				profile, _ = h.profileRepo.FindByIDForUser(c.Request.Context(), *user.DefaultProfileID, userID.(uint), roleStr)
 			}
 
-			// If no user default or user default not found, try to find a system default
+			// Fall back to visible profiles (user-owned or global)
 			if profile == nil {
-				profile, _ = h.profileRepo.FindDefault(c.Request.Context())
-			}
-
-			// If still no profile found, use the first available profile
-			if profile == nil {
-				profiles, _, _ := h.profileRepo.List(c.Request.Context(), 0, 1)
-				if len(profiles) > 0 {
-					profile = &profiles[0]
+				visibleProfiles, _ := h.profileRepo.ListVisibleToUser(c.Request.Context(), userID.(uint))
+				for i := range visibleProfiles {
+					if visibleProfiles[i].IsDefault {
+						profile = &visibleProfiles[i]
+						break
+					}
+				}
+				if profile == nil && len(visibleProfiles) > 0 {
+					profile = &visibleProfiles[0]
 				}
 			}
 
@@ -428,6 +441,10 @@ func (h *Handler) UploadVideo(c *gin.Context) {
 		job.Title = &title
 	}
 
+	if uid, ok := h.currentUserID(c); ok {
+		job.UserID = uid
+	}
+
 	// Save to database
 	if err := h.jobRepo.Create(c.Request.Context(), &job); err != nil {
 		_ = h.fileService.RemoveFile(videoPath)
@@ -446,15 +463,20 @@ func (h *Handler) UploadVideo(c *gin.Context) {
 		if err == nil && user.AutoTranscriptionEnabled {
 			var profile *models.TranscriptionProfile
 			if user.DefaultProfileID != nil {
-				profile, _ = h.profileRepo.FindByID(c.Request.Context(), *user.DefaultProfileID)
+				role, _ := c.Get("role")
+				roleStr, _ := role.(string)
+				profile, _ = h.profileRepo.FindByIDForUser(c.Request.Context(), *user.DefaultProfileID, userID.(uint), roleStr)
 			}
 			if profile == nil {
-				profile, _ = h.profileRepo.FindDefault(c.Request.Context())
-			}
-			if profile == nil {
-				profiles, _, _ := h.profileRepo.List(c.Request.Context(), 0, 1)
-				if len(profiles) > 0 {
-					profile = &profiles[0]
+				visibleProfiles, _ := h.profileRepo.ListVisibleToUser(c.Request.Context(), userID.(uint))
+				for i := range visibleProfiles {
+					if visibleProfiles[i].IsDefault {
+						profile = &visibleProfiles[i]
+						break
+					}
+				}
+				if profile == nil && len(visibleProfiles) > 0 {
+					profile = &visibleProfiles[0]
 				}
 			}
 
@@ -551,6 +573,10 @@ func (h *Handler) UploadMultiTrack(c *gin.Context) {
 		job.Title = &defaultTitle
 	}
 
+	if uid, ok := h.currentUserID(c); ok {
+		job.UserID = uid
+	}
+
 	// Save to database
 	if err := h.jobRepo.Create(c.Request.Context(), &job); err != nil {
 		_ = h.fileService.RemoveDirectory(jobDir)
@@ -573,6 +599,10 @@ func (h *Handler) UploadMultiTrack(c *gin.Context) {
 // @Security BearerAuth
 func (h *Handler) GetMergeStatus(c *gin.Context) {
 	jobID := c.Param("id")
+
+	if _, ok := h.requireJobOwner(c, jobID); !ok {
+		return
+	}
 
 	status, errorMsg, err := h.multiTrackProcessor.GetMergeStatus(jobID)
 	if err != nil {
@@ -603,6 +633,10 @@ func (h *Handler) GetMergeStatus(c *gin.Context) {
 // @Security BearerAuth
 func (h *Handler) GetTrackProgress(c *gin.Context) {
 	jobID := c.Param("id")
+
+	if _, ok := h.requireJobOwner(c, jobID); !ok {
+		return
+	}
 
 	// Get the main job details using repository
 	job, err := h.jobRepo.FindWithAssociations(c.Request.Context(), jobID)
@@ -788,6 +822,10 @@ func (h *Handler) SubmitJob(c *gin.Context) {
 		job.Title = &title
 	}
 
+	if uid, ok := h.currentUserID(c); ok {
+		job.UserID = uid
+	}
+
 	// Save to database
 	if err := h.jobRepo.Create(c.Request.Context(), &job); err != nil {
 		_ = h.fileService.RemoveFile(filePath)
@@ -817,6 +855,10 @@ func (h *Handler) SubmitJob(c *gin.Context) {
 func (h *Handler) GetJobStatus(c *gin.Context) {
 	jobID := c.Param("id")
 
+	if _, ok := h.requireJobOwner(c, jobID); !ok {
+		return
+	}
+
 	job, err := h.taskQueue.GetJobStatus(jobID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -844,13 +886,8 @@ func (h *Handler) GetJobStatus(c *gin.Context) {
 func (h *Handler) GetTranscript(c *gin.Context) {
 	jobID := c.Param("id")
 
-	job, err := h.jobRepo.FindByID(c.Request.Context(), jobID)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get job"})
+	job, ok := h.requireJobOwner(c, jobID)
+	if !ok {
 		return
 	}
 
@@ -925,9 +962,8 @@ func (h *Handler) UpdateTranscriptContent(c *gin.Context) {
 		return
 	}
 
-	job, err := h.jobRepo.FindByID(c.Request.Context(), jobID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
+	job, ok := h.requireJobOwner(c, jobID)
+	if !ok {
 		return
 	}
 	if job.Status != models.StatusCompleted || job.Transcript == nil {
@@ -990,6 +1026,12 @@ func (h *Handler) UpdateTranscriptContent(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Security BearerAuth
 func (h *Handler) ListTranscriptionJobs(c *gin.Context) {
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset := (page - 1) * limit
@@ -1006,7 +1048,7 @@ func (h *Handler) ListTranscriptionJobs(c *gin.Context) {
 		}
 	}
 
-	jobs, total, err := h.jobRepo.ListWithParams(c.Request.Context(), offset, limit, sortBy, sortOrder, searchQuery, updatedAfter)
+	jobs, total, err := h.jobRepo.ListByUserWithParams(c.Request.Context(), userID, offset, limit, sortBy, sortOrder, searchQuery, updatedAfter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list jobs"})
 		return
@@ -1035,6 +1077,10 @@ func (h *Handler) ListTranscriptionJobs(c *gin.Context) {
 // @Security BearerAuth
 func (h *Handler) GetTranscriptionJob(c *gin.Context) {
 	id := c.Param("id")
+
+	if _, ok := h.requireJobOwner(c, id); !ok {
+		return
+	}
 
 	job, err := h.jobRepo.FindWithAssociations(c.Request.Context(), id)
 	if err != nil {
@@ -1112,14 +1158,9 @@ func (h *Handler) StartTranscription(c *gin.Context) {
 }
 
 func (h *Handler) getJobForTranscription(c *gin.Context, jobID string) (*models.TranscriptionJob, error) {
-	job, err := h.jobRepo.FindByID(c.Request.Context(), jobID)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
-			return nil, err
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get job"})
-		return nil, err
+	job, ok := h.requireJobOwner(c, jobID)
+	if !ok {
+		return nil, fmt.Errorf("ownership check failed")
 	}
 
 	// Allow transcription for uploaded, completed, and failed jobs (re-transcription)
@@ -1235,13 +1276,8 @@ func (h *Handler) getValidatedTranscriptionParams(c *gin.Context, job *models.Tr
 func (h *Handler) KillJob(c *gin.Context) {
 	jobID := c.Param("id")
 
-	job, err := h.jobRepo.FindByID(c.Request.Context(), jobID)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get job"})
+	job, ok := h.requireJobOwner(c, jobID)
+	if !ok {
 		return
 	}
 
@@ -1290,9 +1326,8 @@ func (h *Handler) UpdateTranscriptionTitle(c *gin.Context) {
 		return
 	}
 
-	job, err := h.jobRepo.FindByID(c.Request.Context(), jobID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
+	job, ok := h.requireJobOwner(c, jobID)
+	if !ok {
 		return
 	}
 
@@ -1325,9 +1360,8 @@ func (h *Handler) UpdateTranscriptionTitle(c *gin.Context) {
 func (h *Handler) DeleteTranscriptionJob(c *gin.Context) {
 	jobID := c.Param("id")
 
-	job, err := h.jobRepo.FindByID(c.Request.Context(), jobID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
+	job, ok := h.requireJobOwner(c, jobID)
+	if !ok {
 		return
 	}
 
@@ -1335,6 +1369,14 @@ func (h *Handler) DeleteTranscriptionJob(c *gin.Context) {
 	if job.Status == models.StatusProcessing {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot delete job that is currently processing"})
 		return
+	}
+
+	// Measure file size before deletion (for usage accounting)
+	var freedBytes int64
+	if !job.IsMultiTrack {
+		if info, err := os.Stat(job.AudioPath); err == nil {
+			freedBytes = info.Size()
+		}
 	}
 
 	// Delete files
@@ -1398,6 +1440,15 @@ func (h *Handler) DeleteTranscriptionJob(c *gin.Context) {
 		return
 	}
 
+	// Update usage: subtract freed disk bytes
+	if h.usageRepo != nil && job.UserID != 0 && freedBytes > 0 {
+		go func() {
+			usageCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			_ = h.usageRepo.Upsert(usageCtx, job.UserID, -freedBytes, 0, 0)
+		}()
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Job deleted successfully"})
 }
 
@@ -1413,6 +1464,10 @@ func (h *Handler) DeleteTranscriptionJob(c *gin.Context) {
 // @Security BearerAuth
 func (h *Handler) GetJobExecutionData(c *gin.Context) {
 	jobID := c.Param("id")
+
+	if _, ok := h.requireJobOwner(c, jobID); !ok {
+		return
+	}
 
 	// Get the transcription job to check if it's multi-track
 	job, err := h.jobRepo.FindWithAssociations(c.Request.Context(), jobID)
@@ -1488,13 +1543,8 @@ func (h *Handler) GetJobExecutionData(c *gin.Context) {
 func (h *Handler) GetAudioFile(c *gin.Context) {
 	jobID := c.Param("id")
 
-	job, err := h.jobRepo.FindByID(c.Request.Context(), jobID)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get job"})
+	job, ok := h.requireJobOwner(c, jobID)
+	if !ok {
 		return
 	}
 
@@ -1615,6 +1665,12 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
+	if !user.IsActive {
+		logger.AuthEvent("login", req.Username, c.ClientIP(), false, "account_disabled")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "This account has been disabled."})
+		return
+	}
+
 	if !auth.CheckPassword(req.Password, user.Password) {
 		logger.AuthEvent("login", req.Username, c.ClientIP(), false, "invalid_password")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
@@ -1649,6 +1705,7 @@ func (h *Handler) Login(c *gin.Context) {
 	response := LoginResponse{Token: token}
 	response.User.ID = user.ID
 	response.User.Username = user.Username
+	response.User.Role = user.Role
 
 	logger.AuthEvent("login", req.Username, c.ClientIP(), true)
 	c.JSON(http.StatusOK, response)
@@ -1753,10 +1810,12 @@ func (h *Handler) Register(c *gin.Context) {
 		return
 	}
 
-	// Create user
+	// Create user — first user becomes admin
 	user := models.User{
 		Username: req.Username,
 		Password: hashedPassword,
+		Role:     "admin",
+		IsActive: true,
 	}
 
 	if err := h.userRepo.Create(c.Request.Context(), &user); err != nil {
@@ -1782,6 +1841,7 @@ func (h *Handler) Register(c *gin.Context) {
 	response := LoginResponse{Token: token}
 	response.User.ID = user.ID
 	response.User.Username = user.Username
+	response.User.Role = user.Role
 
 	c.JSON(http.StatusCreated, response)
 }
@@ -1984,7 +2044,13 @@ func (h *Handler) ChangeUsername(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/api-keys [get]
 func (h *Handler) ListAPIKeys(c *gin.Context) {
-	apiKeys, err := h.apiKeyRepo.ListActive(c.Request.Context())
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	apiKeys, err := h.apiKeyRepo.ListByUser(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch API keys"})
 		return
@@ -2016,11 +2082,18 @@ func (h *Handler) CreateAPIKey(c *gin.Context) {
 		return
 	}
 
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	// Generate a secure API key
 	apiKey := generateSecureAPIKey(32)
 
 	// Create the API key record
 	newKey := models.APIKey{
+		UserID:      userID,
 		Key:         apiKey,
 		Name:        req.Name,
 		Description: &req.Description,
@@ -2047,6 +2120,12 @@ func (h *Handler) CreateAPIKey(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/api-keys/{id} [delete]
 func (h *Handler) DeleteAPIKey(c *gin.Context) {
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
@@ -2054,9 +2133,9 @@ func (h *Handler) DeleteAPIKey(c *gin.Context) {
 		return
 	}
 
-	// Check if the API key exists
-	_, err = h.apiKeyRepo.FindByID(c.Request.Context(), uint(id))
-	if err != nil {
+	// Verify ownership
+	key, err := h.apiKeyRepo.FindByIDAndUser(c.Request.Context(), uint(id), userID)
+	if err != nil || key == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "API key not found"})
 		return
 	}
@@ -2302,8 +2381,13 @@ func getFormBoolWithDefault(c *gin.Context, key string, defaultValue bool) bool 
 // @Security ApiKeyAuth
 // @Security BearerAuth
 func (h *Handler) ListProfiles(c *gin.Context) {
-	// TODO: Add pagination support to API if needed. For now, list all (limit 1000)
-	profiles, _, err := h.profileRepo.List(c.Request.Context(), 0, 1000)
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	profiles, err := h.profileRepo.ListVisibleToUser(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch profiles"})
 		return
@@ -2322,23 +2406,36 @@ func (h *Handler) ListProfiles(c *gin.Context) {
 // @Router /api/v1/profiles [post]
 // @Security ApiKeyAuth
 // @Security BearerAuth
+// CreateProfileRequest wraps TranscriptionProfile with an is_global flag for admin use.
+type CreateProfileRequest struct {
+	models.TranscriptionProfile
+	IsGlobal bool `json:"is_global"`
+}
+
 func (h *Handler) CreateProfile(c *gin.Context) {
-	var profile models.TranscriptionProfile
-	if err := c.ShouldBindJSON(&profile); err != nil {
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	var req CreateProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
 		return
 	}
 
-	// Validate required fields
-	if profile.Name == "" {
+	if req.Name == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Profile name is required"})
 		return
 	}
 
-	// Check if profile name already exists
-	// TODO: Add FindByName to ProfileRepository if needed, or rely on unique constraint error
-	// For now, we'll skip explicit check or implement it in repository.
-	// Assuming unique constraint on Name in DB or we can check via List.
+	profile := req.TranscriptionProfile
+	if req.IsGlobal && h.currentRole(c) == "admin" {
+		profile.OwnerUserID = nil // global
+	} else {
+		profile.OwnerUserID = &userID
+	}
 
 	if err := h.profileRepo.Create(c.Request.Context(), &profile); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create profile"})
@@ -2361,8 +2458,13 @@ func (h *Handler) CreateProfile(c *gin.Context) {
 // @Security BearerAuth
 func (h *Handler) GetProfile(c *gin.Context) {
 	profileID := c.Param("id")
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
 
-	profile, err := h.profileRepo.FindByID(c.Request.Context(), profileID)
+	profile, err := h.profileRepo.FindByIDForUser(c.Request.Context(), profileID, userID, h.currentRole(c))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
 		return
@@ -2386,8 +2488,13 @@ func (h *Handler) GetProfile(c *gin.Context) {
 // @Security BearerAuth
 func (h *Handler) UpdateProfile(c *gin.Context) {
 	profileID := c.Param("id")
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
 
-	existingProfile, err := h.profileRepo.FindByID(c.Request.Context(), profileID)
+	existingProfile, err := h.profileRepo.FindByIDForUser(c.Request.Context(), profileID, userID, h.currentRole(c))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
 		return
@@ -2399,20 +2506,14 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	// Validate required fields
 	if updatedProfile.Name == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Profile name is required"})
 		return
 	}
 
-	// Check if profile name already exists (excluding current profile)
-	// TODO: Add check to repository
-
-	// Update the profile
-	// We need to preserve ID and CreatedAt, and update other fields
-	// GORM Save updates all fields.
 	updatedProfile.ID = existingProfile.ID
 	updatedProfile.CreatedAt = existingProfile.CreatedAt
+	updatedProfile.OwnerUserID = existingProfile.OwnerUserID // preserve ownership
 
 	if err := h.profileRepo.Update(c.Request.Context(), &updatedProfile); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update profile"})
@@ -2434,8 +2535,13 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 // @Security BearerAuth
 func (h *Handler) DeleteProfile(c *gin.Context) {
 	profileID := c.Param("id")
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
 
-	_, err := h.profileRepo.FindByID(c.Request.Context(), profileID)
+	_, err := h.profileRepo.FindByIDForUser(c.Request.Context(), profileID, userID, h.currentRole(c))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
 		return
@@ -2469,14 +2575,18 @@ func (h *Handler) SetDefaultProfile(c *gin.Context) {
 		return
 	}
 
-	// Find the profile
-	profile, err := h.profileRepo.FindByID(c.Request.Context(), profileID)
+	userID, ok := h.currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	profile, err := h.profileRepo.FindByIDForUser(c.Request.Context(), profileID, userID, h.currentRole(c))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
 		return
 	}
 
-	// Set this profile as default (the BeforeSave hook will handle unsetting other defaults)
 	profile.IsDefault = true
 	if err := h.profileRepo.Update(c.Request.Context(), profile); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to set default profile"})
@@ -2519,17 +2629,25 @@ func (h *Handler) SubmitQuickTranscription(c *gin.Context) {
 
 	// Check if profile_name was provided
 	if profileName := c.PostForm("profile_name"); profileName != "" {
-		// Load parameters from profile
-		profile, err := h.profileRepo.FindByName(c.Request.Context(), profileName)
+		// Load parameters from a profile visible to this user (scoped by ownership)
+		callerID, _ := h.currentUserID(c)
+		visibleProfiles, err := h.profileRepo.ListVisibleToUser(c.Request.Context(), callerID)
 		if err != nil {
-			if err == gorm.ErrRecordNotFound {
-				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Profile '%s' not found", profileName)})
-				return
-			}
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load profile"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load profiles"})
 			return
 		}
-		params = profile.Parameters
+		var found *models.TranscriptionProfile
+		for i := range visibleProfiles {
+			if visibleProfiles[i].Name == profileName {
+				found = &visibleProfiles[i]
+				break
+			}
+		}
+		if found == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Profile '%s' not found", profileName)})
+			return
+		}
+		params = found.Parameters
 
 	} else if parametersJSON := c.PostForm("parameters"); parametersJSON != "" {
 		// Parse parameters from JSON string
@@ -2596,7 +2714,11 @@ func (h *Handler) SubmitQuickTranscription(c *gin.Context) {
 	}
 
 	// Submit quick transcription job
-	job, err := h.quickTranscription.SubmitQuickJob(file, header.Filename, params)
+	var submitterID uint
+	if uid, ok := h.currentUserID(c); ok {
+		submitterID = uid
+	}
+	job, err := h.quickTranscription.SubmitQuickJob(file, header.Filename, params, submitterID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to submit quick transcription: %v", err)})
 		return
@@ -2625,6 +2747,11 @@ func (h *Handler) GetQuickTranscriptionStatus(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get job status"})
+		return
+	}
+
+	if callerID, ok := h.currentUserID(c); ok && job.UserID != 0 && job.UserID != callerID {
+		c.JSON(http.StatusNotFound, gin.H{"error": "job not found"})
 		return
 	}
 
@@ -2744,11 +2871,14 @@ func (h *Handler) DownloadFromYouTube(c *gin.Context) {
 			"duration", time.Since(downloadStart))
 	}
 
+	uid, _ := h.currentUserID(c)
+
 	// Create transcription record
 	job := models.TranscriptionJob{
 		ID:        jobID,
 		AudioPath: actualFilePath,
 		Status:    models.StatusUploaded,
+		UserID:    uid,
 	}
 
 	// Set title
@@ -2789,39 +2919,38 @@ func (h *Handler) GetUserDefaultProfile(c *gin.Context) {
 		return
 	}
 
-	// If user has no default profile set, return the first available profile or no profile
+	visibleProfiles, _ := h.profileRepo.ListVisibleToUser(c.Request.Context(), userID.(uint))
+
+	// If user has no default profile set, pick from visible profiles
 	if user.DefaultProfileID == nil {
-		// Try to find a default profile from profiles table
-		profile, err := h.profileRepo.FindDefault(c.Request.Context())
-		if err == nil {
-			c.JSON(http.StatusOK, profile)
+		for i := range visibleProfiles {
+			if visibleProfiles[i].IsDefault {
+				c.JSON(http.StatusOK, visibleProfiles[i])
+				return
+			}
+		}
+		if len(visibleProfiles) > 0 {
+			c.JSON(http.StatusOK, visibleProfiles[0])
 			return
 		}
-
-		// If no default marked, get first one
-		profiles, _, err := h.profileRepo.List(c.Request.Context(), 0, 1)
-		if err != nil || len(profiles) == 0 {
-			c.JSON(http.StatusNotFound, gin.H{"error": "No profiles available"})
-			return
-		}
-		c.JSON(http.StatusOK, profiles[0])
+		c.JSON(http.StatusNotFound, gin.H{"error": "No profiles available"})
 		return
 	}
 
-	// Get the user's default profile
-	profile, err := h.profileRepo.FindByID(c.Request.Context(), *user.DefaultProfileID)
-	if err != nil {
-		// Default profile no longer exists, fall back to first available
-		profiles, _, err := h.profileRepo.List(c.Request.Context(), 0, 1)
-		if err != nil || len(profiles) == 0 {
-			c.JSON(http.StatusNotFound, gin.H{"error": "No profiles available"})
+	// Find the user's default profile among visible ones
+	for i := range visibleProfiles {
+		if visibleProfiles[i].ID == *user.DefaultProfileID {
+			c.JSON(http.StatusOK, visibleProfiles[i])
 			return
 		}
-		c.JSON(http.StatusOK, profiles[0])
-		return
 	}
 
-	c.JSON(http.StatusOK, profile)
+	// Default profile not visible (deleted or belongs to another user); fall back
+	if len(visibleProfiles) > 0 {
+		c.JSON(http.StatusOK, visibleProfiles[0])
+		return
+	}
+	c.JSON(http.StatusNotFound, gin.H{"error": "No profiles available"})
 }
 
 // SetUserDefaultProfileRequest represents the request to set user's default profile
@@ -2853,8 +2982,8 @@ func (h *Handler) SetUserDefaultProfile(c *gin.Context) {
 		return
 	}
 
-	// Verify the profile exists
-	_, err := h.profileRepo.FindByID(c.Request.Context(), req.ProfileID)
+	// Verify the profile is accessible to this user
+	_, err := h.profileRepo.FindByIDForUser(c.Request.Context(), req.ProfileID, userID.(uint), h.currentRole(c))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
 		return
@@ -2883,6 +3012,9 @@ type UserSettingsResponse struct {
 	DefaultProfileID         *string `json:"default_profile_id,omitempty"`
 	DefaultSummaryTemplateID *string `json:"default_summary_template_id,omitempty"`
 	Language                 string  `json:"language"`
+	Role                     string  `json:"role"`
+	FullName                 *string `json:"full_name,omitempty"`
+	Email                    *string `json:"email,omitempty"`
 }
 
 // UpdateUserSettingsRequest represents the request to update user settings
@@ -2890,6 +3022,8 @@ type UpdateUserSettingsRequest struct {
 	AutoTranscriptionEnabled *bool   `json:"auto_transcription_enabled,omitempty"`
 	Language                 *string `json:"language,omitempty"`
 	DefaultSummaryTemplateID *string `json:"default_summary_template_id,omitempty"`
+	FullName                 *string `json:"full_name,omitempty"`
+	Email                    *string `json:"email,omitempty"`
 }
 
 // @Summary Get user settings
@@ -2919,6 +3053,9 @@ func (h *Handler) GetUserSettings(c *gin.Context) {
 		DefaultProfileID:         user.DefaultProfileID,
 		DefaultSummaryTemplateID: user.DefaultSummaryTemplateID,
 		Language:                 user.Language,
+		Role:                     user.Role,
+		FullName:                 user.FullName,
+		Email:                    user.Email,
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -2969,6 +3106,12 @@ func (h *Handler) UpdateUserSettings(c *gin.Context) {
 			user.DefaultSummaryTemplateID = req.DefaultSummaryTemplateID
 		}
 	}
+	if req.FullName != nil {
+		user.FullName = req.FullName
+	}
+	if req.Email != nil {
+		user.Email = req.Email
+	}
 
 	// Save updated user
 	if err := h.userRepo.Update(c.Request.Context(), user); err != nil {
@@ -2981,6 +3124,9 @@ func (h *Handler) UpdateUserSettings(c *gin.Context) {
 		DefaultProfileID:         user.DefaultProfileID,
 		DefaultSummaryTemplateID: user.DefaultSummaryTemplateID,
 		Language:                 user.Language,
+		Role:                     user.Role,
+		FullName:                 user.FullName,
+		Email:                    user.Email,
 	}
 
 	c.JSON(http.StatusOK, response)

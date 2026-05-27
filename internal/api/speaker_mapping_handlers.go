@@ -6,7 +6,6 @@ import (
 	"ascribe/internal/models"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 // SpeakerMappingRequest represents a speaker mapping update request
@@ -43,14 +42,8 @@ type SpeakerMappingResponse struct {
 func (h *Handler) GetSpeakerMappings(c *gin.Context) {
 	jobID := c.Param("id")
 
-	// Verify the transcription job exists and has diarization enabled
-	job, err := h.jobRepo.FindByID(c.Request.Context(), jobID)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Transcription job not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get transcription job"})
+	job, ok := h.requireJobOwner(c, jobID)
+	if !ok {
 		return
 	}
 
@@ -105,14 +98,8 @@ func (h *Handler) UpdateSpeakerMappings(c *gin.Context) {
 		return
 	}
 
-	// Verify the transcription job exists and has diarization enabled
-	job, err := h.jobRepo.FindByID(c.Request.Context(), jobID)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Transcription job not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get transcription job"})
+	job, ok := h.requireJobOwner(c, jobID)
+	if !ok {
 		return
 	}
 

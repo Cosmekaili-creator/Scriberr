@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { MoreVertical, Trash2, Settings, Terminal } from "lucide-react";
+import { MoreVertical, Trash2, Settings, Terminal, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuth } from "@/features/auth/hooks/useAuth";
@@ -22,6 +22,7 @@ interface TranscriptionProfile {
 	name: string;
 	description?: string;
 	is_default: boolean;
+	owner_user_id?: string | null;
 	parameters: WhisperXParams;
 	created_at: string;
 	updated_at: string;
@@ -181,6 +182,12 @@ export function ProfilesTable({
 									<h3 className="text-sm font-medium text-[var(--text-primary)] truncate">
 										{profile.name}
 									</h3>
+									{profile.owner_user_id === null && (
+										<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--brand-light)] text-[var(--brand-solid)] whitespace-nowrap">
+											<Globe className="h-2.5 w-2.5" />
+											Global
+										</span>
+									)}
 									<span className="text-xs text-[var(--text-tertiary)] whitespace-nowrap">
 										{formatDate(profile.created_at)}
 									</span>

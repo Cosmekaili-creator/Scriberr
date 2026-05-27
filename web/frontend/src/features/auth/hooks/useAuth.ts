@@ -6,6 +6,7 @@ import '../../../lib/authTypes';
 export function useAuth() {
     const {
         token,
+        user,
         requiresRegistration,
         isInitialized,
         setToken,
@@ -15,6 +16,7 @@ export function useAuth() {
     } = useAuthStore();
 
     const isAuthenticated = !!token;
+    const isAdmin = user?.role === 'admin';
 
     const tokenCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -109,7 +111,9 @@ export function useAuth() {
 
     return {
         token,
+        user,
         isAuthenticated,
+        isAdmin,
         requiresRegistration,
         isInitialized,
         login,

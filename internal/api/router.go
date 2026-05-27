@@ -181,25 +181,37 @@ func SetupRoutes(handler *Handler, authService *auth.AuthService) *gin.Engine {
 			user.PUT("/settings", handler.UpdateUserSettings)
 		}
 
-		// Admin routes (require authentication)
+		// Admin routes (require authentication + admin role)
 		admin := v1.Group("/admin")
 		admin.Use(middleware.AuthMiddleware(authService))
+		admin.Use(middleware.RequireAdmin())
 		{
 			queue := admin.Group("/queue")
 			{
 				queue.GET("/stats", handler.GetQueueStats)
 			}
+
+			users := admin.Group("/users")
+			{
+				users.GET("/", handler.AdminListUsers)
+				users.POST("/", handler.AdminCreateUser)
+				users.GET("/:id", handler.AdminGetUser)
+				users.PUT("/:id", handler.AdminUpdateUser)
+				users.POST("/:id/disable", handler.AdminDisableUser)
+				users.POST("/:id/enable", handler.AdminEnableUser)
+				users.POST("/:id/reset-password", handler.AdminResetPassword)
+			}
 		}
 
-		// LLM configuration routes (require authentication)
+		// LLM configuration routes (require authentication; writes are admin-only)
 		llm := v1.Group("/llm")
 		llm.Use(middleware.AuthMiddleware(authService))
 		{
 			llm.GET("/config", handler.GetLLMConfig)
-			llm.POST("/config", handler.SaveLLMConfig)
+			llm.POST("/config", middleware.RequireAdmin(), handler.SaveLLMConfig)
 		}
 
-		// Summarization templates routes (require authentication)
+		// Summarization templates routes (require authentication; settings write is admin-only)
 		summaries := v1.Group("/summaries")
 		summaries.Use(middleware.AuthMiddleware(authService))
 		{
@@ -209,7 +221,7 @@ func SetupRoutes(handler *Handler, authService *auth.AuthService) *gin.Engine {
 			summaries.PUT("/:id", handler.UpdateSummaryTemplate)
 			summaries.DELETE("/:id", handler.DeleteSummaryTemplate)
 			summaries.GET("/settings", handler.GetSummarySettings)
-			summaries.POST("/settings", handler.SaveSummarySettings)
+			summaries.POST("/settings", middleware.RequireAdmin(), handler.SaveSummarySettings)
 		}
 
 		// Chat routes (require authentication)

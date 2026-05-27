@@ -12,8 +12,12 @@ import (
 type UserRepository interface {
 	Repository[models.User]
 	FindByUsername(ctx context.Context, username string) (*models.User, error)
+	FindByEmail(ctx context.Context, email string) (*models.User, error)
 	Count(ctx context.Context) (int64, error)
 	CountWithAutoTranscription(ctx context.Context) (int64, error)
+	CountAdmins(ctx context.Context) (int64, error)
+	ListAll(ctx context.Context) ([]models.User, error)
+	SetActive(ctx context.Context, id uint, active bool) error
 }
 
 type userRepository struct {
@@ -47,6 +51,31 @@ func (r *userRepository) CountWithAutoTranscription(ctx context.Context) (int64,
 	return count, err
 }
 
+func (r *userRepository) FindByEmail(ctx context.Context, email string) (*models.User, error) {
+	var user models.User
+	err := r.db.WithContext(ctx).Where("email = ?", email).First(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *userRepository) ListAll(ctx context.Context) ([]models.User, error) {
+	var users []models.User
+	err := r.db.WithContext(ctx).Order("id asc").Find(&users).Error
+	return users, err
+}
+
+func (r *userRepository) CountAdmins(ctx context.Context) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&models.User{}).Where("role = ? AND is_active = ?", "admin", true).Count(&count).Error
+	return count, err
+}
+
+func (r *userRepository) SetActive(ctx context.Context, id uint, active bool) error {
+	return r.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", id).Update("is_active", active).Error
+}
+
 // JobRepository handles transcription job operations
 type JobRepository interface {
 	Repository[models.TranscriptionJob]
@@ -54,7 +83,7 @@ type JobRepository interface {
 	FindActiveTrackJobs(ctx context.Context, parentJobID string) ([]models.TranscriptionJob, error)
 	FindLatestCompletedExecution(ctx context.Context, jobID string) (*models.TranscriptionJobExecution, error)
 	ListWithParams(ctx context.Context, offset, limit int, sortBy, sortOrder, searchQuery string, updatedAfter *time.Time) ([]models.TranscriptionJob, int64, error)
-	ListByUser(ctx context.Context, userID uint, offset, limit int) ([]models.TranscriptionJob, int64, error)
+	ListByUserWithParams(ctx context.Context, userID uint, offset, limit int, sortBy, sortOrder, searchQuery string, updatedAfter *time.Time) ([]models.TranscriptionJob, int64, error)
 	UpdateTranscript(ctx context.Context, jobID string, transcript string) error
 	CreateExecution(ctx context.Context, execution *models.TranscriptionJobExecution) error
 	UpdateExecution(ctx context.Context, execution *models.TranscriptionJobExecution) error
@@ -131,13 +160,36 @@ func (r *jobRepository) ListWithParams(ctx context.Context, offset, limit int, s
 	return jobs, count, nil
 }
 
-func (r *jobRepository) ListByUser(ctx context.Context, userID uint, offset, limit int) ([]models.TranscriptionJob, int64, error) {
-	// Note: Currently TranscriptionJob doesn't have a UserID field in the provided model.
-	// Assuming we might need to add it or this is a placeholder for future multi-user support.
-	// For now, we'll just return all jobs as the current app seems single-user focused or
-	// missing the link.
-	// TODO: Add UserID to TranscriptionJob model if multi-user isolation is required.
-	return r.List(ctx, offset, limit)
+func (r *jobRepository) ListByUserWithParams(ctx context.Context, userID uint, offset, limit int, sortBy, sortOrder, searchQuery string, updatedAfter *time.Time) ([]models.TranscriptionJob, int64, error) {
+	var jobs []models.TranscriptionJob
+	var count int64
+
+	db := r.db.WithContext(ctx).Model(&models.TranscriptionJob{}).Where("user_id = ?", userID)
+
+	if updatedAfter != nil {
+		db = db.Unscoped().Where("updated_at > ?", *updatedAfter)
+	}
+
+	if searchQuery != "" {
+		search := "%" + searchQuery + "%"
+		db = db.Where("title LIKE ? OR audio_path LIKE ?", search, search)
+	}
+
+	if err := db.Count(&count).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if sortBy != "" {
+		if sortOrder == "" {
+			sortOrder = "desc"
+		}
+		db = db.Order(sortBy + " " + sortOrder)
+	} else {
+		db = db.Order("created_at desc")
+	}
+
+	err := db.Offset(offset).Limit(limit).Find(&jobs).Error
+	return jobs, count, err
 }
 
 func (r *jobRepository) UpdateTranscript(ctx context.Context, jobID string, transcript string) error {
@@ -214,6 +266,8 @@ type APIKeyRepository interface {
 	Repository[models.APIKey]
 	FindByKey(ctx context.Context, key string) (*models.APIKey, error)
 	ListActive(ctx context.Context) ([]models.APIKey, error)
+	ListByUser(ctx context.Context, userID uint) ([]models.APIKey, error)
+	FindByIDAndUser(ctx context.Context, id uint, userID uint) (*models.APIKey, error)
 	Revoke(ctx context.Context, id uint) error
 }
 
@@ -245,6 +299,21 @@ func (r *apiKeyRepository) ListActive(ctx context.Context) ([]models.APIKey, err
 	return apiKeys, nil
 }
 
+func (r *apiKeyRepository) ListByUser(ctx context.Context, userID uint) ([]models.APIKey, error) {
+	var keys []models.APIKey
+	err := r.db.WithContext(ctx).Where("user_id = ?", userID).Order("created_at desc").Find(&keys).Error
+	return keys, err
+}
+
+func (r *apiKeyRepository) FindByIDAndUser(ctx context.Context, id uint, userID uint) (*models.APIKey, error) {
+	var key models.APIKey
+	err := r.db.WithContext(ctx).Where("id = ? AND user_id = ?", id, userID).First(&key).Error
+	if err != nil {
+		return nil, err
+	}
+	return &key, nil
+}
+
 func (r *apiKeyRepository) Revoke(ctx context.Context, id uint) error {
 	return r.db.WithContext(ctx).Model(&models.APIKey{}).Where("id = ?", id).Update("is_active", false).Error
 }
@@ -254,6 +323,8 @@ type ProfileRepository interface {
 	Repository[models.TranscriptionProfile]
 	FindDefault(ctx context.Context) (*models.TranscriptionProfile, error)
 	FindByName(ctx context.Context, name string) (*models.TranscriptionProfile, error)
+	ListVisibleToUser(ctx context.Context, userID uint) ([]models.TranscriptionProfile, error)
+	FindByIDForUser(ctx context.Context, id string, userID uint, role string) (*models.TranscriptionProfile, error)
 }
 
 type profileRepository struct {
@@ -278,6 +349,29 @@ func (r *profileRepository) FindDefault(ctx context.Context) (*models.Transcript
 func (r *profileRepository) FindByName(ctx context.Context, name string) (*models.TranscriptionProfile, error) {
 	var profile models.TranscriptionProfile
 	err := r.db.WithContext(ctx).Where("name = ?", name).First(&profile).Error
+	if err != nil {
+		return nil, err
+	}
+	return &profile, nil
+}
+
+func (r *profileRepository) ListVisibleToUser(ctx context.Context, userID uint) ([]models.TranscriptionProfile, error) {
+	var profiles []models.TranscriptionProfile
+	err := r.db.WithContext(ctx).
+		Where("owner_user_id IS NULL OR owner_user_id = ?", userID).
+		Order("is_default desc, name asc").
+		Find(&profiles).Error
+	return profiles, err
+}
+
+func (r *profileRepository) FindByIDForUser(ctx context.Context, id string, userID uint, role string) (*models.TranscriptionProfile, error) {
+	var profile models.TranscriptionProfile
+	var err error
+	if role == "admin" {
+		err = r.db.WithContext(ctx).Where("id = ?", id).First(&profile).Error
+	} else {
+		err = r.db.WithContext(ctx).Where("id = ? AND (owner_user_id IS NULL OR owner_user_id = ?)", id, userID).First(&profile).Error
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -312,6 +406,7 @@ func (r *llmConfigRepository) GetActive(ctx context.Context) (*models.LLMConfig,
 // SummaryRepository handles summary templates and settings
 type SummaryRepository interface {
 	Repository[models.SummaryTemplate]
+	ListVisibleToUser(ctx context.Context, userID uint) ([]models.SummaryTemplate, error)
 	GetSettings(ctx context.Context) (*models.SummarySetting, error)
 	SaveSettings(ctx context.Context, settings *models.SummarySetting) error
 	SaveSummary(ctx context.Context, summary *models.Summary) error
@@ -327,6 +422,15 @@ func NewSummaryRepository(db *gorm.DB) SummaryRepository {
 	return &summaryRepository{
 		BaseRepository: NewBaseRepository[models.SummaryTemplate](db),
 	}
+}
+
+func (r *summaryRepository) ListVisibleToUser(ctx context.Context, userID uint) ([]models.SummaryTemplate, error) {
+	var items []models.SummaryTemplate
+	err := r.db.WithContext(ctx).
+		Where("owner_user_id IS NULL OR owner_user_id = ?", userID).
+		Order("name asc").
+		Find(&items).Error
+	return items, err
 }
 
 func (r *summaryRepository) GetSettings(ctx context.Context) (*models.SummarySetting, error) {
@@ -368,6 +472,7 @@ type ChatRepository interface {
 	GetSessionWithTranscription(ctx context.Context, id string) (*models.ChatSession, error)
 	AddMessage(ctx context.Context, message *models.ChatMessage) error
 	ListByJob(ctx context.Context, jobID string) ([]models.ChatSession, error)
+	ListByJobAndUser(ctx context.Context, jobID string, userID uint) ([]models.ChatSession, error)
 	DeleteSession(ctx context.Context, id string) error
 	GetMessages(ctx context.Context, sessionID string, limit int) ([]models.ChatMessage, error)
 	DeleteByJobID(ctx context.Context, jobID string) error
@@ -414,6 +519,15 @@ func (r *chatRepository) ListByJob(ctx context.Context, jobID string) ([]models.
 		return nil, err
 	}
 	return sessions, nil
+}
+
+func (r *chatRepository) ListByJobAndUser(ctx context.Context, jobID string, userID uint) ([]models.ChatSession, error) {
+	var sessions []models.ChatSession
+	err := r.db.WithContext(ctx).
+		Where("transcription_id = ? AND user_id = ?", jobID, userID).
+		Order("created_at DESC").
+		Find(&sessions).Error
+	return sessions, err
 }
 
 func (r *chatRepository) DeleteSession(ctx context.Context, id string) error {
@@ -593,6 +707,7 @@ type RefreshTokenRepository interface {
 	FindByHash(ctx context.Context, hash string) (*models.RefreshToken, error)
 	Revoke(ctx context.Context, id uint) error
 	RevokeByHash(ctx context.Context, hash string) error
+	RevokeByUserID(ctx context.Context, userID uint) error
 }
 
 type refreshTokenRepository struct {
@@ -622,6 +737,10 @@ func (r *refreshTokenRepository) Revoke(ctx context.Context, id uint) error {
 
 func (r *refreshTokenRepository) RevokeByHash(ctx context.Context, hash string) error {
 	return r.db.WithContext(ctx).Model(&models.RefreshToken{}).Where("hashed = ?", hash).Update("revoked", true).Error
+}
+
+func (r *refreshTokenRepository) RevokeByUserID(ctx context.Context, userID uint) error {
+	return r.db.WithContext(ctx).Model(&models.RefreshToken{}).Where("user_id = ?", userID).Update("revoked", true).Error
 }
 
 // CollectionRepository handles collection operations.
