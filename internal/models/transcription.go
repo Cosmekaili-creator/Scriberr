@@ -158,6 +158,7 @@ type User struct {
 	DefaultProfileID         *string   `json:"default_profile_id,omitempty" gorm:"type:varchar(36)"`
 	DefaultSummaryTemplateID *string   `json:"default_summary_template_id,omitempty" gorm:"type:varchar(36)"`
 	AutoTranscriptionEnabled bool      `json:"auto_transcription_enabled" gorm:"not null;default:false"`
+	AutoExportEnabled        bool      `json:"auto_export_enabled" gorm:"not null;default:false"`
 	Language                 string    `json:"language" gorm:"type:varchar(10);not null;default:''"`
 	CreatedAt                time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt                time.Time `json:"updated_at" gorm:"autoUpdateTime"`

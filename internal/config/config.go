@@ -28,6 +28,7 @@ type Config struct {
 	UploadDir      string
 	TranscriptsDir string
 	TempDir        string
+	ExportsDir     string
 
 	// Python/WhisperX configuration
 	WhisperXEnv string
@@ -70,6 +71,7 @@ func Load() *Config {
 		UploadDir:      getEnv("UPLOAD_DIR", "data/uploads"),
 		TranscriptsDir: getEnv("TRANSCRIPTS_DIR", "data/transcripts"),
 		TempDir:        getEnv("TEMP_DIR", "data/temp"),
+		ExportsDir:     getEnv("EXPORTS_DIR", "data/exports"),
 		WhisperXEnv:    getEnv("WHISPERX_ENV", "data/whisperx-env"),
 		SecureCookies:  getEnv("SECURE_COOKIES", defaultSecure) == "true",
 		OpenAIAPIKey:     getEnv("OPENAI_API_KEY", ""),

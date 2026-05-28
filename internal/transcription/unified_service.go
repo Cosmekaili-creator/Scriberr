@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -51,10 +52,12 @@ type UnifiedTranscriptionService struct {
 	postprocessors        map[string]interfaces.Postprocessor
 	tempDirectory         string
 	outputDirectory       string
+	exportsDirectory      string
 	defaultModelIDs       map[string]string      // Default model IDs for each task type
 	multiTrackTranscriber *MultiTrackTranscriber // For termination support
 	jobRepo               repository.JobRepository
 	usageRepo             repository.UserUsageRepository
+	userRepo              repository.UserRepository
 	webhookService        *webhook.Service
 	broadcaster           *sse.Broadcaster
 }
@@ -85,6 +88,16 @@ func (u *UnifiedTranscriptionService) SetBroadcaster(b *sse.Broadcaster) {
 // SetUsageRepo sets the usage repository for tracking per-user resource consumption
 func (u *UnifiedTranscriptionService) SetUsageRepo(r repository.UserUsageRepository) {
 	u.usageRepo = r
+}
+
+// SetUserRepo sets the user repository (needed for auto-export feature)
+func (u *UnifiedTranscriptionService) SetUserRepo(r repository.UserRepository) {
+	u.userRepo = r
+}
+
+// SetExportsDir sets the directory where auto-exported transcripts are written
+func (u *UnifiedTranscriptionService) SetExportsDir(dir string) {
+	u.exportsDirectory = dir
 }
 
 // Initialize prepares all registered models for use
@@ -360,6 +373,8 @@ func (u *UnifiedTranscriptionService) processSingleTrackJob(ctx context.Context,
 		if err := u.saveTranscriptionResults(job.ID, transcriptResult); err != nil {
 			return fmt.Errorf("failed to save transcription results: %w", err)
 		}
+		// Auto-export to file if enabled for this user (best-effort, non-blocking)
+		go u.maybeExportTranscript(job, transcriptResult.Text)
 	}
 
 	return nil
@@ -948,6 +963,49 @@ func (u *UnifiedTranscriptionService) findBestSpeakerForSegment(start, end float
 	}
 
 	return bestSpeaker
+}
+
+var nonAlphanumRe = regexp.MustCompile(`[^a-zA-Z0-9]+`)
+
+// maybeExportTranscript writes the plain-text transcript to data/exports/ if the user has auto-export enabled.
+func (u *UnifiedTranscriptionService) maybeExportTranscript(job *models.TranscriptionJob, text string) {
+	if u.userRepo == nil || u.exportsDirectory == "" || text == "" || job.UserID == 0 {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	user, err := u.userRepo.FindByID(ctx, job.UserID)
+	if err != nil || !user.AutoExportEnabled {
+		return
+	}
+
+	if err := os.MkdirAll(u.exportsDirectory, 0755); err != nil {
+		logger.Error("Auto-export: failed to create exports dir", "error", err)
+		return
+	}
+
+	// Build filename: YYYY-MM-DD_<sanitized-title-or-id>.txt
+	datePart := time.Now().UTC().Format("2006-01-02")
+	namePart := job.ID[:8]
+	if job.Title != nil && *job.Title != "" {
+		slug := nonAlphanumRe.ReplaceAllString(*job.Title, "_")
+		slug = strings.Trim(slug, "_")
+		if len(slug) > 60 {
+			slug = slug[:60]
+		}
+		if slug != "" {
+			namePart = slug
+		}
+	}
+	filename := filepath.Join(u.exportsDirectory, datePart+"_"+namePart+".txt")
+
+	if err := os.WriteFile(filename, []byte(text), 0644); err != nil {
+		logger.Error("Auto-export: failed to write file", "job_id", job.ID, "path", filename, "error", err)
+		return
+	}
+	logger.Info("Auto-export: transcript saved", "job_id", job.ID, "path", filename)
 }
 
 // saveTranscriptionResults saves the transcription results to the database

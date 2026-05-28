@@ -22,6 +22,8 @@ interface TranscriptionProfile {
 
 interface UserSettings {
 	auto_transcription_enabled: boolean;
+	auto_export_enabled: boolean;
+	exports_dir: string;
 	default_profile_id?: string;
 }
 
@@ -128,6 +130,37 @@ export function ProfileSettings() {
 
 		loadUserSettings();
 	}, [getAuthHeaders]);
+
+	// Handle auto-export toggle
+	const handleAutoExportToggle = async (enabled: boolean) => {
+		setError("");
+		setSuccess("");
+
+		try {
+			const response = await fetch("/api/v1/user/settings", {
+				method: "PUT",
+				headers: {
+					"Content-Type": "application/json",
+					...getAuthHeaders(),
+				},
+				body: JSON.stringify({
+					auto_export_enabled: enabled,
+				}),
+			});
+
+			if (response.ok) {
+				const updatedSettings = await response.json();
+				setUserSettings(updatedSettings);
+				setSuccess(enabled ? t('settings.profile.exportEnabled') : t('settings.profile.exportDisabled'));
+			} else {
+				const errorData = await response.json();
+				setError(errorData.error || t('settings.profile.updateFailed'));
+			}
+		} catch (error) {
+			console.error("Error updating auto-export setting:", error);
+			setError(t('settings.profile.networkError'));
+		}
+	};
 
 	// Handle auto-transcription toggle
 	const handleAutoTranscriptionToggle = async (enabled: boolean) => {
@@ -259,22 +292,42 @@ export function ProfileSettings() {
 						<span className="text-sm text-carbon-600 dark:text-carbon-400">{t('settings.profile.loading')}</span>
 					</div>
 				) : (
-					<div className="flex items-center justify-between py-2">
-						<div>
-							<Label htmlFor="auto-transcription" className="text-[var(--text-primary)] font-medium">
-								{t('settings.profile.autoLabel')}
-							</Label>
-							<p className="text-sm text-[var(--text-secondary)] mt-1">
-								{t('settings.profile.autoDetail')}
-							</p>
+					<>
+						<div className="flex items-center justify-between py-2">
+							<div>
+								<Label htmlFor="auto-transcription" className="text-[var(--text-primary)] font-medium">
+									{t('settings.profile.autoLabel')}
+								</Label>
+								<p className="text-sm text-[var(--text-secondary)] mt-1">
+									{t('settings.profile.autoDetail')}
+								</p>
+							</div>
+							<Switch
+								id="auto-transcription"
+								checked={userSettings?.auto_transcription_enabled || false}
+								onCheckedChange={handleAutoTranscriptionToggle}
+								disabled={settingsLoading}
+							/>
 						</div>
-						<Switch
-							id="auto-transcription"
-							checked={userSettings?.auto_transcription_enabled || false}
-							onCheckedChange={handleAutoTranscriptionToggle}
-							disabled={settingsLoading}
-						/>
-					</div>
+						<div className="flex items-center justify-between py-2 border-t border-[var(--border-subtle)] mt-2 pt-4">
+							<div>
+								<Label htmlFor="auto-export" className="text-[var(--text-primary)] font-medium">
+									{t('settings.profile.exportLabel')}
+								</Label>
+								<p className="text-sm text-[var(--text-secondary)] mt-1">
+									{t('settings.profile.exportDetail').split('{exportsDir}').map((part, i) =>
+										i === 0 ? part : <><code className="text-xs bg-[var(--secondary)] px-1 py-0.5 rounded font-mono">{userSettings?.exports_dir ?? 'data/exports'}</code>{part}</>
+									)}
+								</p>
+							</div>
+							<Switch
+								id="auto-export"
+								checked={userSettings?.auto_export_enabled || false}
+								onCheckedChange={handleAutoExportToggle}
+								disabled={settingsLoading}
+							/>
+						</div>
+					</>
 				)}
 			</div>
 

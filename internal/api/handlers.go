@@ -2860,6 +2860,8 @@ func (h *Handler) SetUserDefaultProfile(c *gin.Context) {
 // UserSettingsResponse represents the user's settings
 type UserSettingsResponse struct {
 	AutoTranscriptionEnabled bool    `json:"auto_transcription_enabled"`
+	AutoExportEnabled        bool    `json:"auto_export_enabled"`
+	ExportsDir               string  `json:"exports_dir"`
 	DefaultProfileID         *string `json:"default_profile_id,omitempty"`
 	DefaultSummaryTemplateID *string `json:"default_summary_template_id,omitempty"`
 	Language                 string  `json:"language"`
@@ -2871,6 +2873,7 @@ type UserSettingsResponse struct {
 // UpdateUserSettingsRequest represents the request to update user settings
 type UpdateUserSettingsRequest struct {
 	AutoTranscriptionEnabled *bool   `json:"auto_transcription_enabled,omitempty"`
+	AutoExportEnabled        *bool   `json:"auto_export_enabled,omitempty"`
 	Language                 *string `json:"language,omitempty"`
 	DefaultSummaryTemplateID *string `json:"default_summary_template_id,omitempty"`
 	FullName                 *string `json:"full_name,omitempty"`
@@ -2901,6 +2904,8 @@ func (h *Handler) GetUserSettings(c *gin.Context) {
 
 	response := UserSettingsResponse{
 		AutoTranscriptionEnabled: user.AutoTranscriptionEnabled,
+		AutoExportEnabled:        user.AutoExportEnabled,
+		ExportsDir:               h.config.ExportsDir,
 		DefaultProfileID:         user.DefaultProfileID,
 		DefaultSummaryTemplateID: user.DefaultSummaryTemplateID,
 		Language:                 user.Language,
@@ -2947,6 +2952,9 @@ func (h *Handler) UpdateUserSettings(c *gin.Context) {
 	if req.AutoTranscriptionEnabled != nil {
 		user.AutoTranscriptionEnabled = *req.AutoTranscriptionEnabled
 	}
+	if req.AutoExportEnabled != nil {
+		user.AutoExportEnabled = *req.AutoExportEnabled
+	}
 	if req.Language != nil {
 		user.Language = *req.Language
 	}
@@ -2972,6 +2980,8 @@ func (h *Handler) UpdateUserSettings(c *gin.Context) {
 
 	response := UserSettingsResponse{
 		AutoTranscriptionEnabled: user.AutoTranscriptionEnabled,
+		AutoExportEnabled:        user.AutoExportEnabled,
+		ExportsDir:               h.config.ExportsDir,
 		DefaultProfileID:         user.DefaultProfileID,
 		DefaultSummaryTemplateID: user.DefaultSummaryTemplateID,
 		Language:                 user.Language,
