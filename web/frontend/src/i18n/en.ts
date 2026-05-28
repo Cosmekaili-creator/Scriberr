@@ -461,9 +461,9 @@ export const en: Record<string, string> = {
   'header.quickTranscribeDesc': 'Fast transcribe without saving',
   'header.youtubeUrl': 'YouTube URL',
   'header.youtubeUrlDesc': 'Download audio from YouTube',
-  'header.uploadFiles': 'Upload Files',
+  'header.uploadFiles': 'Files',
   'header.uploadFilesDesc': 'Choose one or more audio files',
-  'header.uploadVideos': 'Upload Videos',
+  'header.uploadVideos': 'Videos',
   'header.uploadVideosDesc': 'Extract audio from video files',
   'header.recordAudio': 'Record Audio',
   'header.recordAudioDesc': 'Record using microphone',
@@ -478,7 +478,7 @@ export const en: Record<string, string> = {
   'header.home': 'Home',
   'header.settings': 'Settings',
   'header.logout': 'Logout',
-  'header.videoFilesError': 'Video files detected. Please use "Upload Videos" instead to extract audio.',
+  'header.videoFilesError': 'Video files detected. Please use "Videos" instead to extract audio.',
   'header.audioFilesError': 'No valid audio files found. Please select audio files (.mp3, .wav, .flac, .m4a, .aac, .ogg)',
 
   // Drag & Drop Overlay

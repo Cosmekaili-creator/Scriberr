@@ -2823,15 +2823,25 @@ func (h *Handler) DownloadFromYouTube(c *gin.Context) {
 	logger.Info("Starting YouTube download", "url", req.URL, "job_id", jobID)
 	downloadStart := time.Now()
 
-	// Executing yt-dlp directly (standalone binary)
-	ytDlpCmd := exec.Command("yt-dlp",
+	// Build yt-dlp args; add --cookies if a cookies file is configured or exists at the default path
+	ytArgs := []string{
 		"--extract-audio",
 		"--audio-format", "mp3",
-		"--audio-quality", "0", // best quality
+		"--audio-quality", "0",
 		"--output", filePath,
 		"--no-playlist",
-		req.URL,
-	)
+	}
+	cookiesFile := os.Getenv("YTDLP_COOKIES_FILE")
+	if cookiesFile == "" {
+		cookiesFile = filepath.Join(filepath.Dir(h.config.DatabasePath), "yt-cookies.txt")
+	}
+	if _, statErr := os.Stat(cookiesFile); statErr == nil {
+		ytArgs = append(ytArgs, "--cookies", cookiesFile)
+		logger.Info("Using yt-dlp cookies file", "path", cookiesFile)
+	}
+	ytArgs = append(ytArgs, req.URL)
+
+	ytDlpCmd := exec.Command("yt-dlp", ytArgs...)
 
 	// Execute download and capture stderr for better error messages
 	var stderr bytes.Buffer
@@ -2846,8 +2856,13 @@ func (h *Handler) DownloadFromYouTube(c *gin.Context) {
 			"stderr", stderrOutput,
 			"duration", time.Since(downloadStart))
 
+		errMsg := fmt.Sprintf("Failed to download YouTube audio: %v", err)
+		if strings.Contains(stderrOutput, "Sign in to confirm") || strings.Contains(stderrOutput, "not a bot") {
+			errMsg = "YouTube blocked the download (bot detection). To fix this, export your YouTube cookies as yt-cookies.txt and place the file in the app data directory (/app/data/yt-cookies.txt)."
+		}
+
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   fmt.Sprintf("Failed to download YouTube audio: %v", err),
+			"error":   errMsg,
 			"details": stderrOutput,
 		})
 		return
