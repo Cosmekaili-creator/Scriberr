@@ -58,6 +58,10 @@ feats.txt
 log.txt
 manifest_and_icons
 manifest_and_icons.zip
+ascribe-logos-to-regenerate.zip
+plans/
+# compiled binary
+ascribe
 tests/database_test.db-wal
 internal/web/dist
 
