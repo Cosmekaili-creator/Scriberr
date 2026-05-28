@@ -459,9 +459,7 @@ export const en: Record<string, string> = {
   'header.openMenu': 'Open menu',
   'header.quickTranscribe': 'Quick Transcribe',
   'header.quickTranscribeDesc': 'Fast transcribe without saving',
-  'header.youtubeUrl': 'YouTube URL',
-  'header.youtubeUrlDesc': 'Download audio from YouTube',
-  'header.uploadFiles': 'Files',
+'header.uploadFiles': 'Files',
   'header.uploadFilesDesc': 'Choose one or more audio files',
   'header.uploadVideos': 'Videos',
   'header.uploadVideosDesc': 'Extract audio from video files',
@@ -738,23 +736,6 @@ export const en: Record<string, string> = {
   'transcription.quick.close': 'Close',
   'transcription.quick.copyText': 'Copy Text',
 
-  // YouTube Download Dialog
-  'transcription.youtube.title': 'Download from YouTube',
-  'transcription.youtube.description': 'Enter a YouTube video URL to download its audio for transcription',
-  'transcription.youtube.complete': 'Download Complete!',
-  'transcription.youtube.completeDesc': 'The audio has been downloaded and added to your audio files.',
-  'transcription.youtube.urlLabel': 'YouTube URL',
-  'transcription.youtube.urlPlaceholder': 'https://www.youtube.com/watch?v=...',
-  'transcription.youtube.titleLabel': 'Custom Title (Optional)',
-  'transcription.youtube.titleDesc': 'Leave empty to use video title',
-  'transcription.youtube.titleAutomatic': "If left empty, the video's title will be used automatically",
-  'transcription.youtube.urlRequired': 'Please enter a YouTube URL',
-  'transcription.youtube.urlInvalid': 'Please enter a valid YouTube URL',
-  'transcription.youtube.networkError': 'Network error occurred. Please try again.',
-  'transcription.youtube.cancel': 'Cancel',
-  'transcription.youtube.downloading': 'Downloading...',
-  'transcription.youtube.download': 'Download',
-
   // MultiTrack Upload Dialog
   'transcription.multitrack.title': 'Upload Multi-Track Audio',
   'transcription.multitrack.autoDesc': 'Auto-detected multi-track project with {n} audio tracks. Review and upload when ready.',
@@ -790,13 +771,6 @@ export const en: Record<string, string> = {
   'transcription.quick.selectFileHint': 'Supports common audio formats. Files auto-delete after 6 hours.',
   'transcription.quick.submitError': 'Failed to submit transcription job',
   'transcription.quick.unknownError': 'An unknown error occurred',
-
-  // YouTube Download (additional keys)
-  'transcription.youtube.errorEmpty': 'Please enter a YouTube URL',
-  'transcription.youtube.errorInvalid': 'Please enter a valid YouTube URL',
-  'transcription.youtube.errorNetwork': 'Network error occurred. Please try again.',
-  'transcription.youtube.titleHint': "If left empty, the video's title will be used automatically",
-  'transcription.youtube.titlePlaceholder': 'Optional custom title...',
 
   // Transcription Config (additional keys)
   'transcription.config.title': 'Transcription Settings',

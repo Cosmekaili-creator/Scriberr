@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -173,20 +172,6 @@ type CreateAPIKeyResponse struct {
 	Description string `json:"description,omitempty"`
 }
 
-// YouTubeDownloadRequest represents the YouTube download request
-type YouTubeDownloadRequest struct {
-	URL   string  `json:"url" binding:"required"`
-	Title *string `json:"title,omitempty"`
-}
-
-// YouTubeDownloadResponse represents the YouTube download response
-type YouTubeDownloadResponse struct {
-	JobID    string `json:"job_id"`
-	Status   string `json:"status"`
-	Message  string `json:"message,omitempty"`
-	Title    string `json:"title,omitempty"`
-	Progress int    `json:"progress,omitempty"`
-}
 
 // LLMConfigRequest represents the LLM configuration request
 type LLMConfigRequest struct {
@@ -2762,159 +2747,6 @@ func (h *Handler) GetQuickTranscriptionStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, job)
 }
 
-// @Summary Download audio from YouTube URL
-// @Description Download audio from a YouTube video URL and prepare it for transcription
-// @Tags transcription
-// @Accept json
-// @Produce json
-// @Param request body YouTubeDownloadRequest true "YouTube download request"
-// @Success 200 {object} models.TranscriptionJob
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Router /api/v1/transcription/youtube [post]
-// @Security ApiKeyAuth
-// @Security BearerAuth
-func (h *Handler) DownloadFromYouTube(c *gin.Context) {
-	var req YouTubeDownloadRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Validate YouTube URL
-	if !strings.Contains(req.URL, "youtube.com") && !strings.Contains(req.URL, "youtu.be") {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid YouTube URL"})
-		return
-	}
-
-	// Create upload directory
-	uploadDir := h.config.UploadDir
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create upload directory"})
-		return
-	}
-
-	// Generate unique job ID and filename
-	jobID := uuid.New().String()
-	filename := fmt.Sprintf("%s.%%(ext)s", jobID)
-	filePath := filepath.Join(uploadDir, filename)
-
-	// Get video title if not provided
-	var title string
-	if req.Title != nil && *req.Title != "" {
-		title = *req.Title
-	} else {
-		// Get title first using standalone yt-dlp
-		titleStart := time.Now()
-		cmd := exec.Command("yt-dlp", "--get-title", req.URL)
-		var out bytes.Buffer
-		cmd.Stdout = &out
-		err := cmd.Run()
-		if err != nil {
-			title = "YouTube Audio"
-			logger.Warn("Failed to get YouTube title", "url", req.URL, "error", err.Error(), "duration", time.Since(titleStart))
-		} else {
-			title = strings.TrimSpace(out.String())
-			logger.Info("YouTube title retrieved", "title", title, "duration", time.Since(titleStart))
-		}
-	}
-
-	// Download audio using yt-dlp in Python environment
-	logger.Info("Starting YouTube download", "url", req.URL, "job_id", jobID)
-	downloadStart := time.Now()
-
-	// Build yt-dlp args; add --cookies if a cookies file is configured or exists at the default path
-	ytArgs := []string{
-		"--extract-audio",
-		"--audio-format", "mp3",
-		"--audio-quality", "0",
-		"--output", filePath,
-		"--no-playlist",
-	}
-	cookiesFile := os.Getenv("YTDLP_COOKIES_FILE")
-	if cookiesFile == "" {
-		cookiesFile = filepath.Join(filepath.Dir(h.config.DatabasePath), "yt-cookies.txt")
-	}
-	if _, statErr := os.Stat(cookiesFile); statErr == nil {
-		ytArgs = append(ytArgs, "--cookies", cookiesFile)
-		logger.Info("Using yt-dlp cookies file", "path", cookiesFile)
-	}
-	ytArgs = append(ytArgs, req.URL)
-
-	ytDlpCmd := exec.Command("yt-dlp", ytArgs...)
-
-	// Execute download and capture stderr for better error messages
-	var stderr bytes.Buffer
-	ytDlpCmd.Stderr = &stderr
-
-	if err := ytDlpCmd.Run(); err != nil {
-		stderrOutput := stderr.String()
-		logger.Error("YouTube download failed",
-			"url", req.URL,
-			"job_id", jobID,
-			"error", err.Error(),
-			"stderr", stderrOutput,
-			"duration", time.Since(downloadStart))
-
-		errMsg := fmt.Sprintf("Failed to download YouTube audio: %v", err)
-		if strings.Contains(stderrOutput, "Sign in to confirm") || strings.Contains(stderrOutput, "not a bot") {
-			errMsg = "YouTube blocked the download (bot detection). To fix this, export your YouTube cookies as yt-cookies.txt and place the file in the app data directory (/app/data/yt-cookies.txt)."
-		}
-
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   errMsg,
-			"details": stderrOutput,
-		})
-		return
-	}
-
-	// Find the actual downloaded file (yt-dlp changes the extension)
-	pattern := fmt.Sprintf("%s.*", jobID)
-	matches, err := filepath.Glob(filepath.Join(uploadDir, pattern))
-	if err != nil || len(matches) == 0 {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Downloaded file not found"})
-		return
-	}
-
-	actualFilePath := matches[0]
-
-	// Get file size for performance logging
-	fileInfo, err := os.Stat(actualFilePath)
-	if err == nil {
-		fileSizeMB := float64(fileInfo.Size()) / 1024 / 1024
-		logger.Info("YouTube download completed",
-			"url", req.URL,
-			"job_id", jobID,
-			"file_path", actualFilePath,
-			"file_size_mb", fmt.Sprintf("%.2f", fileSizeMB),
-			"duration", time.Since(downloadStart))
-	}
-
-	uid, _ := h.currentUserID(c)
-
-	// Create transcription record
-	job := models.TranscriptionJob{
-		ID:        jobID,
-		AudioPath: actualFilePath,
-		Status:    models.StatusUploaded,
-		UserID:    uid,
-	}
-
-	// Set title
-	if title != "" {
-		job.Title = &title
-	}
-
-	// Save to database
-	if err := h.jobRepo.Create(c.Request.Context(), &job); err != nil {
-		// Clean up downloaded file on database error
-		os.Remove(actualFilePath)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save transcription record"})
-		return
-	}
-
-	c.JSON(http.StatusOK, job)
-}
 
 // @Summary Get user's default profile
 // @Description Get the default transcription profile for the current user

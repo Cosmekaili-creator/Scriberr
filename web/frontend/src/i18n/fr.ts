@@ -459,9 +459,7 @@ export const fr: Record<string, string> = {
   'header.openMenu': 'Ouvrir le menu',
   'header.quickTranscribe': 'Transcription rapide',
   'header.quickTranscribeDesc': 'Transcription rapide sans sauvegarde',
-  'header.youtubeUrl': 'URL YouTube',
-  'header.youtubeUrlDesc': 'Télécharger l\'audio depuis YouTube',
-  'header.uploadFiles': 'Fichiers',
+'header.uploadFiles': 'Fichiers',
   'header.uploadFilesDesc': 'Choisir un ou plusieurs fichiers audio',
   'header.uploadVideos': 'Vidéos',
   'header.uploadVideosDesc': 'Extraire l\'audio des fichiers vidéo',
@@ -738,23 +736,6 @@ export const fr: Record<string, string> = {
   'transcription.quick.close': 'Fermer',
   'transcription.quick.copyText': 'Copier le texte',
 
-  // YouTube Download Dialog
-  'transcription.youtube.title': 'Télécharger depuis YouTube',
-  'transcription.youtube.description': 'Entrez une URL de vidéo YouTube pour télécharger son audio pour transcription',
-  'transcription.youtube.complete': 'Téléchargement terminé !',
-  'transcription.youtube.completeDesc': 'L\'audio a été téléchargé et ajouté à vos fichiers audio.',
-  'transcription.youtube.urlLabel': 'URL YouTube',
-  'transcription.youtube.urlPlaceholder': 'https://www.youtube.com/watch?v=...',
-  'transcription.youtube.titleLabel': 'Titre personnalisé (optionnel)',
-  'transcription.youtube.titleDesc': 'Laissez vide pour utiliser le titre de la vidéo',
-  'transcription.youtube.titleAutomatic': 'Si laissé vide, le titre de la vidéo sera utilisé automatiquement',
-  'transcription.youtube.urlRequired': 'Veuillez entrer une URL YouTube',
-  'transcription.youtube.urlInvalid': 'Veuillez entrer une URL YouTube valide',
-  'transcription.youtube.networkError': 'Une erreur réseau s\'est produite. Veuillez réessayer.',
-  'transcription.youtube.cancel': 'Annuler',
-  'transcription.youtube.downloading': 'Téléchargement en cours...',
-  'transcription.youtube.download': 'Télécharger',
-
   // MultiTrack Upload Dialog
   'transcription.multitrack.title': 'Téléverser de l\'audio multi-pistes',
   'transcription.multitrack.autoDesc': 'Projet multi-pistes auto-détecté avec {n} pistes audio. Vérifiez et téléversez lorsque vous êtes prêt.',
@@ -790,13 +771,6 @@ export const fr: Record<string, string> = {
   'transcription.quick.selectFileHint': 'Prend en charge les formats audio courants. Les fichiers sont auto-supprimés après 6 heures.',
   'transcription.quick.submitError': 'Échec de la soumission de la tâche de transcription',
   'transcription.quick.unknownError': 'Une erreur inconnue s\'est produite',
-
-  // YouTube Download (additional keys)
-  'transcription.youtube.errorEmpty': 'Veuillez entrer une URL YouTube',
-  'transcription.youtube.errorInvalid': 'Veuillez entrer une URL YouTube valide',
-  'transcription.youtube.errorNetwork': 'Une erreur réseau s\'est produite. Veuillez réessayer.',
-  'transcription.youtube.titleHint': 'Si laissé vide, le titre de la vidéo sera utilisé automatiquement',
-  'transcription.youtube.titlePlaceholder': 'Titre personnalisé optionnel...',
 
   // Transcription Config (additional keys)
   'transcription.config.title': 'Paramètres de transcription',

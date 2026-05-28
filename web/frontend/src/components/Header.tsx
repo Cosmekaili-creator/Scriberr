@@ -8,14 +8,13 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Upload, Settings, LogOut, Home, Plus, Grip, Zap, Youtube, Video, Users, MonitorSpeaker, FolderOpen, Radio } from "lucide-react";
+import { Upload, Settings, LogOut, Home, Plus, Grip, Zap, Video, Users, MonitorSpeaker, FolderOpen, Radio } from "lucide-react";
 import { AScribeLogo } from "./AScribeLogo";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { AudioRecorder } from "./AudioRecorder";
 import { SystemAudioRecorder } from "./SystemAudioRecorder";
 import { RealtimeRecorderDialog } from "@/features/transcription/realtime/RealtimeRecorderDialog";
 import { QuickTranscriptionDialog } from "@/features/transcription/components/QuickTranscriptionDialog";
-import { YouTubeDownloadDialog } from "@/features/transcription/components/YouTubeDownloadDialog";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { isVideoFile, isAudioFile } from "../utils/fileProcessor";
@@ -31,10 +30,9 @@ interface FileWithType {
 interface HeaderProps {
 	onFileSelect?: (files: File | File[] | FileWithType | FileWithType[]) => void;
 	onMultiTrackClick?: () => void;
-	onDownloadComplete?: () => void;
 }
 
-export function Header({ onFileSelect, onMultiTrackClick, onDownloadComplete }: HeaderProps) {
+export function Header({ onFileSelect, onMultiTrackClick }: HeaderProps) {
 	const navigate = useNavigate();
 	const { logout, isAdmin, getAuthHeaders } = useAuth();
 	const { t } = useTranslation();
@@ -44,8 +42,6 @@ export function Header({ onFileSelect, onMultiTrackClick, onDownloadComplete }: 
 	const [isRealtimeRecorderOpen, setIsRealtimeRecorderOpen] = useState(false);
 	const [isSystemRecorderOpen, setIsSystemRecorderOpen] = useState(false);
 	const [isQuickTranscriptionOpen, setIsQuickTranscriptionOpen] = useState(false);
-	const [isYouTubeDialogOpen, setIsYouTubeDialogOpen] = useState(false);
-
 	// Detect real-time provider from the user's default profile.
 	const { data: defaultProfile } = useQuery({
 		queryKey: ['user', 'default-profile'],
@@ -88,10 +84,6 @@ export function Header({ onFileSelect, onMultiTrackClick, onDownloadComplete }: 
 
 	const handleQuickTranscriptionClick = () => {
 		setIsQuickTranscriptionOpen(true);
-	};
-
-	const handleYouTubeClick = () => {
-		setIsYouTubeDialogOpen(true);
 	};
 
 	const handleMultiTrackClick = () => {
@@ -267,23 +259,6 @@ export function Header({ onFileSelect, onMultiTrackClick, onDownloadComplete }: 
 								</div>
 								<div className="font-medium text-sm">{t('header.uploadTracks')}</div>
 							</DropdownMenuItem>
-							<DropdownMenuSeparator className="my-1 bg-[var(--border-subtle)]" />
-
-							{/* 4. URL Youtube */}
-							<DropdownMenuItem
-								onClick={handleYouTubeClick}
-								className="group flex items-center gap-3 px-3 py-3 cursor-pointer rounded-[var(--radius-btn)] focus:bg-[var(--brand-light)] focus:text-[var(--brand-solid)] transition-colors"
-							>
-								<div className="p-2 bg-rose-500/10 rounded-[var(--radius-btn)] text-rose-600 group-focus:text-[var(--brand-solid)]">
-									<Youtube className="h-4 w-4" />
-								</div>
-								<div>
-									<div className="font-medium text-sm">{t('header.youtubeUrl')}</div>
-									<div className="text-xs text-[var(--text-secondary)]">
-										{t('header.youtubeUrlDesc')}
-									</div>
-								</div>
-							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
 
@@ -379,13 +354,6 @@ export function Header({ onFileSelect, onMultiTrackClick, onDownloadComplete }: 
 			<QuickTranscriptionDialog
 				isOpen={isQuickTranscriptionOpen}
 				onClose={() => setIsQuickTranscriptionOpen(false)}
-			/>
-
-			{/* YouTube Download Dialog */}
-			<YouTubeDownloadDialog
-				isOpen={isYouTubeDialogOpen}
-				onClose={() => setIsYouTubeDialogOpen(false)}
-				onDownloadComplete={onDownloadComplete}
 			/>
 
 		</header>
