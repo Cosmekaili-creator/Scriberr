@@ -87,8 +87,12 @@ export const TranscriptView = forwardRef<HTMLDivElement, TranscriptViewProps>(({
 
     // --- Inline edit state ---
     const [localSegments, setLocalSegments] = useState<EditableSegment[]>(() => transcript?.segments ?? []);
-    const [editingSpeaker, setEditingSpeaker] = useState<string | null>(null);
+    // Track the specific segment index being edited (not speaker label) so only ONE input mounts.
+    // Tracking by label caused all segments sharing that speaker to mount <input autoFocus> at once,
+    // creating a blur cascade that immediately closed the edit.
+    const [editingSegmentIdx, setEditingSegmentIdx] = useState<number | null>(null);
     const [speakerDraft, setSpeakerDraft] = useState('');
+    const speakerCommittedRef = useRef(false);
 
     // Sync local copy when transcript changes (after server save)
     useEffect(() => {
@@ -101,16 +105,16 @@ export const TranscriptView = forwardRef<HTMLDivElement, TranscriptViewProps>(({
         el.style.height = `${el.scrollHeight}px`;
     };
 
-    const handleSpeakerClick = (originalSpeaker: string) => {
-        setEditingSpeaker(originalSpeaker);
-        setSpeakerDraft(getDisplaySpeakerName(originalSpeaker));
-    };
-
     const commitSpeakerRename = () => {
-        if (editingSpeaker && speakerDraft.trim()) {
-            onSpeakerRename?.(editingSpeaker, speakerDraft.trim());
+        if (speakerCommittedRef.current) return;
+        speakerCommittedRef.current = true;
+        if (editingSegmentIdx !== null) {
+            const seg = expandedData[editingSegmentIdx];
+            if (seg?.speaker && speakerDraft.trim()) {
+                onSpeakerRename?.(seg.speaker, speakerDraft.trim());
+            }
         }
-        setEditingSpeaker(null);
+        setEditingSegmentIdx(null);
     };
 
     // Use CSS Highlight API for Compact Mode
@@ -335,7 +339,7 @@ export const TranscriptView = forwardRef<HTMLDivElement, TranscriptViewProps>(({
             <div className="space-y-4">
                 {expandedData.map((segment, i) => {
                     const localSeg = localSegments[i] ?? segment;
-                    const isEditingSpeakerHere = editingSpeaker === segment.speaker && segment.speaker;
+                    const isEditingSpeakerHere = editingSegmentIdx === i;
 
                     return (
                         <div
@@ -363,7 +367,7 @@ export const TranscriptView = forwardRef<HTMLDivElement, TranscriptViewProps>(({
                                             onBlur={commitSpeakerRename}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter') { e.preventDefault(); commitSpeakerRename(); }
-                                                if (e.key === 'Escape') { e.preventDefault(); setEditingSpeaker(null); }
+                                                if (e.key === 'Escape') { e.preventDefault(); speakerCommittedRef.current = true; setEditingSegmentIdx(null); }
                                             }}
                                             className="w-full text-xs font-medium bg-[var(--brand-light)] text-[var(--brand-solid)] border border-[var(--brand-solid)]/30 rounded px-1 py-0.5 focus:outline-none"
                                             placeholder={t('detail.transcript.speaker.placeholder')}
@@ -371,7 +375,20 @@ export const TranscriptView = forwardRef<HTMLDivElement, TranscriptViewProps>(({
                                     ) : (
                                         <button
                                             type="button"
-                                            onClick={() => handleSpeakerClick(segment.speaker!)}
+                                            onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                // Commit any in-progress edit for a different segment
+                                                if (editingSegmentIdx !== null && editingSegmentIdx !== i) {
+                                                    const prev = expandedData[editingSegmentIdx];
+                                                    if (prev?.speaker && speakerDraft.trim()) {
+                                                        onSpeakerRename?.(prev.speaker, speakerDraft.trim());
+                                                    }
+                                                    speakerCommittedRef.current = true; // prevent onBlur from double-firing
+                                                }
+                                                speakerCommittedRef.current = false;
+                                                setEditingSegmentIdx(i);
+                                                setSpeakerDraft(getDisplaySpeakerName(segment.speaker!));
+                                            }}
                                             title={t('detail.transcript.speaker.rename')}
                                             className="font-medium text-carbon-700 dark:text-carbon-300 truncate max-w-full text-left hover:text-[var(--brand-solid)] hover:underline transition-colors cursor-pointer"
                                         >

@@ -686,15 +686,21 @@ func (r *speakerMappingRepository) DeleteByJobID(ctx context.Context, jobID stri
 
 func (r *speakerMappingRepository) UpdateMappings(ctx context.Context, jobID string, mappings []models.SpeakerMapping) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		// Delete existing mappings for this job
-		if err := tx.Where("transcription_job_id = ?", jobID).Delete(&models.SpeakerMapping{}).Error; err != nil {
-			return err
-		}
-
-		// Create new mappings
-		if len(mappings) > 0 {
-			if err := tx.Create(&mappings).Error; err != nil {
+		for _, m := range mappings {
+			var existing models.SpeakerMapping
+			err := tx.Where("transcription_job_id = ? AND original_speaker = ?", jobID, m.OriginalSpeaker).
+				First(&existing).Error
+			if err == gorm.ErrRecordNotFound {
+				m.TranscriptionJobID = jobID
+				if err := tx.Create(&m).Error; err != nil {
+					return err
+				}
+			} else if err != nil {
 				return err
+			} else {
+				if err := tx.Model(&existing).Update("custom_name", m.CustomName).Error; err != nil {
+					return err
+				}
 			}
 		}
 		return nil

@@ -4,9 +4,11 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Upload, Mic, Settings, LogOut, Home, Plus, Grip, Zap, Youtube, Video, Users, MonitorSpeaker, FolderOpen, Radio } from "lucide-react";
+import { Upload, Settings, LogOut, Home, Plus, Grip, Zap, Youtube, Video, Users, MonitorSpeaker, FolderOpen, Radio } from "lucide-react";
 import { AScribeLogo } from "./AScribeLogo";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { AudioRecorder } from "./AudioRecorder";
@@ -78,14 +80,6 @@ export function Header({ onFileSelect, onMultiTrackClick, onDownloadComplete }: 
 
 	const handleVideoUploadClick = () => {
 		videoFileInputRef.current?.click();
-	};
-
-	const handleRecordClick = () => {
-		if (realtimeProvider) {
-			setIsRealtimeRecorderOpen(true);
-		} else {
-			setIsRecorderOpen(true);
-		}
 	};
 
 	const handleSystemRecordClick = () => {
@@ -178,9 +172,22 @@ export function Header({ onFileSelect, onMultiTrackClick, onDownloadComplete }: 
 				{/* Left side - Logo navigates home */}
 				<AScribeLogo onClick={handleHomeClick} />
 
-				{/* Right side - Plus (Add Audio), Grip Menu, Theme Switcher */}
+				{/* Right side - Live button, Plus (Add Audio), Grip Menu, Theme Switcher */}
 				<div className="flex items-center gap-2 sm:gap-3">
-					{/* Add Audio (icon-only) */}
+					{/* Transcription en direct — primary action, shown when a realtime provider is configured */}
+					{realtimeProvider && (
+						<Button
+							onClick={() => setIsRealtimeRecorderOpen(true)}
+							variant="default"
+							size="icon"
+							className="bg-gradient-to-br from-emerald-400 to-teal-600 text-white shadow-[0_4px_12px_rgba(16,185,129,0.4)] hover:shadow-[0_6px_16px_rgba(16,185,129,0.5)] border-none h-8 w-8 sm:h-10 sm:w-10 rounded-lg transition-all hover:scale-105 active:scale-95 cursor-pointer"
+						>
+							<Radio className="h-4 w-4 sm:h-5 sm:w-5" />
+							<span className="sr-only">{t('header.liveTranscription')}</span>
+						</Button>
+					)}
+
+					{/* Add Audio (+) */}
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button
@@ -196,6 +203,7 @@ export function Header({ onFileSelect, onMultiTrackClick, onDownloadComplete }: 
 							align="end"
 							className="w-64 glass-card p-2 rounded-[var(--radius-card)] shadow-[var(--shadow-float)] border-[var(--border-subtle)]"
 						>
+							{/* 1. Transcription rapide */}
 							<DropdownMenuItem
 								onClick={handleQuickTranscriptionClick}
 								className="group flex items-center gap-3 px-3 py-3 cursor-pointer rounded-[var(--radius-btn)] focus:bg-[var(--brand-light)] focus:text-[var(--brand-solid)] transition-colors"
@@ -210,66 +218,8 @@ export function Header({ onFileSelect, onMultiTrackClick, onDownloadComplete }: 
 									</div>
 								</div>
 							</DropdownMenuItem>
-							<DropdownMenuItem
-								onClick={handleYouTubeClick}
-								className="group flex items-center gap-3 px-3 py-3 cursor-pointer rounded-[var(--radius-btn)] focus:bg-[var(--brand-light)] focus:text-[var(--brand-solid)] transition-colors"
-							>
-								<div className="p-2 bg-rose-500/10 rounded-[var(--radius-btn)] text-rose-600 group-focus:text-[var(--brand-solid)]">
-									<Youtube className="h-4 w-4" />
-								</div>
-								<div>
-									<div className="font-medium text-sm">{t('header.youtubeUrl')}</div>
-									<div className="text-xs text-[var(--text-secondary)]">
-										{t('header.youtubeUrlDesc')}
-									</div>
-								</div>
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								onClick={handleUploadClick}
-								className="group flex items-center gap-3 px-3 py-3 cursor-pointer rounded-[var(--radius-btn)] focus:bg-[var(--brand-light)] focus:text-[var(--brand-solid)] transition-colors"
-							>
-								<div className="p-2 bg-[var(--brand-light)] rounded-[var(--radius-btn)] text-[var(--brand-solid)] group-focus:text-[var(--brand-solid)]">
-									<Upload className="h-4 w-4" />
-								</div>
-								<div>
-									<div className="font-medium text-sm">{t('header.uploadFiles')}</div>
-									<div className="text-xs text-[var(--text-secondary)]">
-										{t('header.uploadFilesDesc')}
-									</div>
-								</div>
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								onClick={handleVideoUploadClick}
-								className="group flex items-center gap-3 px-3 py-3 cursor-pointer rounded-[var(--radius-btn)] focus:bg-[var(--brand-light)] focus:text-[var(--brand-solid)] transition-colors"
-							>
-								<div className="p-2 bg-purple-500/10 rounded-[var(--radius-btn)] text-purple-600 group-focus:text-[var(--brand-solid)]">
-									<Video className="h-4 w-4" />
-								</div>
-								<div>
-									<div className="font-medium text-sm">{t('header.uploadVideos')}</div>
-									<div className="text-xs text-[var(--text-secondary)]">
-										{t('header.uploadVideosDesc')}
-									</div>
-								</div>
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								onClick={handleRecordClick}
-								className="group flex items-center gap-3 px-3 py-3 cursor-pointer rounded-[var(--radius-btn)] focus:bg-[var(--brand-light)] focus:text-[var(--brand-solid)] transition-colors"
-							>
-								<div className={`p-2 rounded-[var(--radius-btn)] group-focus:text-[var(--brand-solid)] ${realtimeProvider ? 'bg-red-500/10 text-red-600' : 'bg-emerald-500/10 text-emerald-600'}`}>
-									{realtimeProvider ? <Radio className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-								</div>
-								<div>
-									<div className="font-medium text-sm">
-										{realtimeProvider ? t('realtime.recorder.title') : t('header.recordAudio')}
-									</div>
-									<div className="text-xs text-[var(--text-secondary)]">
-										{realtimeProvider
-											? t('realtime.recorder.description')
-											: t('header.recordAudioDesc')}
-									</div>
-								</div>
-							</DropdownMenuItem>
+
+							{/* 2. Enregistrer l'audio du système */}
 							<DropdownMenuItem
 								onClick={handleSystemRecordClick}
 								className="group flex items-center gap-3 px-3 py-3 cursor-pointer rounded-[var(--radius-btn)] focus:bg-[var(--brand-light)] focus:text-[var(--brand-solid)] transition-colors"
@@ -284,17 +234,53 @@ export function Header({ onFileSelect, onMultiTrackClick, onDownloadComplete }: 
 									</div>
 								</div>
 							</DropdownMenuItem>
+
+							{/* 3. Téléverser — section label + flat items */}
+							<DropdownMenuSeparator className="my-1 bg-[var(--border-subtle)]" />
+							<DropdownMenuLabel className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
+								{t('header.upload')}
+							</DropdownMenuLabel>
+							<DropdownMenuItem
+								onClick={handleUploadClick}
+								className="group flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-[var(--radius-btn)] focus:bg-[var(--brand-light)] focus:text-[var(--brand-solid)] transition-colors"
+							>
+								<div className="p-2 bg-[var(--brand-light)] rounded-[var(--radius-btn)] text-[var(--brand-solid)]">
+									<Upload className="h-4 w-4" />
+								</div>
+								<div className="font-medium text-sm">{t('header.uploadFiles')}</div>
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={handleVideoUploadClick}
+								className="group flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-[var(--radius-btn)] focus:bg-[var(--brand-light)] focus:text-[var(--brand-solid)] transition-colors"
+							>
+								<div className="p-2 bg-purple-500/10 rounded-[var(--radius-btn)] text-purple-600">
+									<Video className="h-4 w-4" />
+								</div>
+								<div className="font-medium text-sm">{t('header.uploadVideos')}</div>
+							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={handleMultiTrackClick}
-								className="group flex items-center gap-3 px-3 py-3 cursor-pointer rounded-[var(--radius-btn)] focus:bg-[var(--brand-light)] focus:text-[var(--brand-solid)] transition-colors"
+								className="group flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-[var(--radius-btn)] focus:bg-[var(--brand-light)] focus:text-[var(--brand-solid)] transition-colors"
 							>
-								<div className="p-2 bg-indigo-500/10 rounded-[var(--radius-btn)] text-indigo-600 group-focus:text-[var(--brand-solid)]">
+								<div className="p-2 bg-indigo-500/10 rounded-[var(--radius-btn)] text-indigo-600">
 									<Users className="h-4 w-4" />
 								</div>
+								<div className="font-medium text-sm">{t('header.uploadTracks')}</div>
+							</DropdownMenuItem>
+							<DropdownMenuSeparator className="my-1 bg-[var(--border-subtle)]" />
+
+							{/* 4. URL Youtube */}
+							<DropdownMenuItem
+								onClick={handleYouTubeClick}
+								className="group flex items-center gap-3 px-3 py-3 cursor-pointer rounded-[var(--radius-btn)] focus:bg-[var(--brand-light)] focus:text-[var(--brand-solid)] transition-colors"
+							>
+								<div className="p-2 bg-rose-500/10 rounded-[var(--radius-btn)] text-rose-600 group-focus:text-[var(--brand-solid)]">
+									<Youtube className="h-4 w-4" />
+								</div>
 								<div>
-									<div className="font-medium text-sm">{t('header.multitrack')}</div>
+									<div className="font-medium text-sm">{t('header.youtubeUrl')}</div>
 									<div className="text-xs text-[var(--text-secondary)]">
-										{t('header.multitrackDesc')}
+										{t('header.youtubeUrlDesc')}
 									</div>
 								</div>
 							</DropdownMenuItem>

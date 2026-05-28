@@ -49,9 +49,22 @@ export function useUpdateSpeaker(audioId: string) {
             if (!response.ok) throw new Error("Failed to update speaker name");
             return response.json();
         },
+        onMutate: async ({ originalSpeaker, customName }) => {
+            await queryClient.cancelQueries({ queryKey: ["speakerMappings", audioId] });
+            const previous = queryClient.getQueryData<Record<string, string>>(["speakerMappings", audioId]);
+            queryClient.setQueryData<Record<string, string>>(["speakerMappings", audioId], (old = {}) => ({
+                ...old,
+                [originalSpeaker]: customName,
+            }));
+            return { previous };
+        },
+        onError: (_err, _vars, context) => {
+            if (context?.previous !== undefined) {
+                queryClient.setQueryData(["speakerMappings", audioId], context.previous);
+            }
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["speakerMappings", audioId] });
-            // Also invalidate transcript if it embeds speaker names (though currently we derive it)
         },
     });
 }

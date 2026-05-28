@@ -274,7 +274,7 @@ export function RealtimeRecorderDialog({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="justify-between"
+                  className="w-full min-w-0 justify-between"
                   disabled={isRecording || isStopping}
                 >
                   <span className="truncate">
