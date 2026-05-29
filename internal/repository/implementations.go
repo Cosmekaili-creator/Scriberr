@@ -77,6 +77,12 @@ func (r *userRepository) SetActive(ctx context.Context, id uint, active bool) er
 }
 
 // JobRepository handles transcription job operations
+// JobSearchResult pairs a job with its FTS5 match snippet.
+type JobSearchResult struct {
+	Job     models.TranscriptionJob
+	Snippet string
+}
+
 type JobRepository interface {
 	Repository[models.TranscriptionJob]
 	FindWithAssociations(ctx context.Context, id string) (*models.TranscriptionJob, error)
@@ -84,7 +90,11 @@ type JobRepository interface {
 	FindLatestCompletedExecution(ctx context.Context, jobID string) (*models.TranscriptionJobExecution, error)
 	ListWithParams(ctx context.Context, offset, limit int, sortBy, sortOrder, searchQuery string, updatedAfter *time.Time) ([]models.TranscriptionJob, int64, error)
 	ListByUserWithParams(ctx context.Context, userID uint, offset, limit int, sortBy, sortOrder, searchQuery string, updatedAfter *time.Time) ([]models.TranscriptionJob, int64, error)
+	SearchByUser(ctx context.Context, userID uint, query string, offset, limit int) ([]JobSearchResult, int64, error)
 	UpdateTranscript(ctx context.Context, jobID string, transcript string) error
+	IndexTranscript(ctx context.Context, jobID string, userID uint, title, text string) error
+	UpdateFTSTitle(ctx context.Context, jobID, title string) error
+	RemoveFTSEntry(ctx context.Context, jobID string) error
 	CreateExecution(ctx context.Context, execution *models.TranscriptionJobExecution) error
 	UpdateExecution(ctx context.Context, execution *models.TranscriptionJobExecution) error
 	DeleteExecutionsByJobID(ctx context.Context, jobID string) error
@@ -196,6 +206,95 @@ func (r *jobRepository) UpdateTranscript(ctx context.Context, jobID string, tran
 	return r.db.WithContext(ctx).Model(&models.TranscriptionJob{}).
 		Where("id = ?", jobID).
 		Update("transcript", transcript).Error
+}
+
+func (r *jobRepository) IndexTranscript(ctx context.Context, jobID string, userID uint, title, text string) error {
+	db := r.db.WithContext(ctx)
+	if err := db.Exec("DELETE FROM transcription_jobs_fts WHERE job_id = ?", jobID).Error; err != nil {
+		return err
+	}
+	return db.Exec(
+		"INSERT INTO transcription_jobs_fts (job_id, user_id, title, transcript_text) VALUES (?, ?, ?, ?)",
+		jobID, userID, title, text,
+	).Error
+}
+
+func (r *jobRepository) UpdateFTSTitle(ctx context.Context, jobID, title string) error {
+	return r.db.WithContext(ctx).Exec(
+		"UPDATE transcription_jobs_fts SET title = ? WHERE job_id = ?",
+		title, jobID,
+	).Error
+}
+
+func (r *jobRepository) RemoveFTSEntry(ctx context.Context, jobID string) error {
+	return r.db.WithContext(ctx).Exec(
+		"DELETE FROM transcription_jobs_fts WHERE job_id = ?", jobID,
+	).Error
+}
+
+func (r *jobRepository) SearchByUser(ctx context.Context, userID uint, query string, offset, limit int) ([]JobSearchResult, int64, error) {
+	type ftsRow struct {
+		JobID   string `gorm:"column:job_id"`
+		Snippet string `gorm:"column:snippet"`
+	}
+	var rows []ftsRow
+	err := r.db.WithContext(ctx).Raw(`
+		SELECT job_id,
+		       snippet(transcription_jobs_fts, 3, '**', '**', '…', 32) AS snippet
+		FROM transcription_jobs_fts
+		WHERE transcription_jobs_fts MATCH ?
+		  AND user_id = ?
+		ORDER BY bm25(transcription_jobs_fts)
+	`, query, userID).Scan(&rows).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	total := int64(len(rows))
+	if total == 0 {
+		return nil, 0, nil
+	}
+
+	// Apply pagination to BM25-ranked results
+	end := offset + limit
+	if end > len(rows) {
+		end = len(rows)
+	}
+	if offset >= len(rows) {
+		return nil, total, nil
+	}
+	page := rows[offset:end]
+
+	// Build ordered ID list and snippet map
+	ids := make([]string, len(page))
+	snippetMap := make(map[string]string, len(page))
+	for i, row := range page {
+		ids[i] = row.JobID
+		snippetMap[row.JobID] = row.Snippet
+	}
+
+	// Fetch full job records (GORM's soft-delete scope is applied automatically)
+	var jobs []models.TranscriptionJob
+	if err := r.db.WithContext(ctx).
+		Where("id IN ?", ids).
+		Find(&jobs).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Map for O(1) lookup
+	jobMap := make(map[string]models.TranscriptionJob, len(jobs))
+	for _, j := range jobs {
+		jobMap[j.ID] = j
+	}
+
+	// Return in BM25 order
+	results := make([]JobSearchResult, 0, len(ids))
+	for _, id := range ids {
+		if job, ok := jobMap[id]; ok {
+			results = append(results, JobSearchResult{Job: job, Snippet: snippetMap[id]})
+		}
+	}
+	return results, total, nil
 }
 
 func (r *jobRepository) CreateExecution(ctx context.Context, execution *models.TranscriptionJobExecution) error {

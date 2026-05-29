@@ -379,6 +379,19 @@ func (u *UnifiedTranscriptionService) processSingleTrackJob(ctx context.Context,
 		}
 		// Auto-export to file if enabled for this user (best-effort, non-blocking)
 		go u.maybeExportTranscript(job, transcriptResult.Text)
+		// Update FTS index (best-effort, non-blocking)
+		title := ""
+		if job.Title != nil {
+			title = *job.Title
+		}
+		capturedText := transcriptResult.Text
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if err := u.jobRepo.IndexTranscript(ctx, job.ID, job.UserID, title, capturedText); err != nil {
+				logger.Warn("FTS index failed", "job_id", job.ID, "error", err)
+			}
+		}()
 	}
 
 	return nil

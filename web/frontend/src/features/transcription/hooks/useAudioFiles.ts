@@ -14,6 +14,7 @@ export interface AudioFile {
     individual_transcripts?: any;
     speakers?: number;
     duration?: number;
+    snippet?: string;
 }
 
 export interface AudioFilesResponse {

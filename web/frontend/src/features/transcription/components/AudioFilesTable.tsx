@@ -798,6 +798,15 @@ export const AudioFilesTable = memo(function AudioFilesTable({
 											<h4 className="font-normal text-gray-900 dark:text-gray-100 truncate text-lg leading-tight group-hover:text-[#FF6D20] transition-colors">
 												{file.title || getFileName(file.audio_path)}
 											</h4>
+											{file.snippet && (
+												<p className="text-xs text-[var(--text-secondary)] mt-0.5 line-clamp-2">
+													{file.snippet.split('**').map((part, i) =>
+														i % 2 === 1
+															? <mark key={i} className="bg-[var(--brand-solid)]/20 text-[var(--brand-solid)] rounded px-0.5 not-italic font-medium">{part}</mark>
+															: <span key={i}>{part}</span>
+													)}
+												</p>
+											)}
 											<div className="flex items-center gap-1.5 mt-1 text-sm text-gray-500">
 												{formatDate(file.created_at)}
 											</div>

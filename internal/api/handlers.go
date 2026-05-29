@@ -1037,14 +1037,40 @@ func (h *Handler) ListTranscriptionJobs(c *gin.Context) {
 		}
 	}
 
-	jobs, total, err := h.jobRepo.ListByUserWithParams(c.Request.Context(), userID, offset, limit, sortBy, sortOrder, searchQuery, updatedAfter)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list jobs"})
-		return
+	type jobWithSnippet struct {
+		models.TranscriptionJob
+		Snippet string `json:"snippet,omitempty"`
+	}
+
+	var jobItems []jobWithSnippet
+	var total int64
+
+	if searchQuery != "" {
+		results, t, err := h.jobRepo.SearchByUser(c.Request.Context(), userID, searchQuery, offset, limit)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to search jobs"})
+			return
+		}
+		total = t
+		jobItems = make([]jobWithSnippet, len(results))
+		for i, r := range results {
+			jobItems[i] = jobWithSnippet{TranscriptionJob: r.Job, Snippet: r.Snippet}
+		}
+	} else {
+		jobs, t, err := h.jobRepo.ListByUserWithParams(c.Request.Context(), userID, offset, limit, sortBy, sortOrder, searchQuery, updatedAfter)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list jobs"})
+			return
+		}
+		total = t
+		jobItems = make([]jobWithSnippet, len(jobs))
+		for i, j := range jobs {
+			jobItems[i] = jobWithSnippet{TranscriptionJob: j}
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"jobs": jobs,
+		"jobs": jobItems,
 		"pagination": gin.H{
 			"page":  page,
 			"limit": limit,
@@ -1326,6 +1352,13 @@ func (h *Handler) UpdateTranscriptionTitle(c *gin.Context) {
 		return
 	}
 
+	// Update FTS index title (transcript unchanged — just update the title column)
+	go func(id, title string) {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = h.jobRepo.UpdateFTSTitle(ctx, id, title)
+	}(jobID, body.Title)
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":         job.ID,
 		"title":      job.Title,
@@ -1428,6 +1461,13 @@ func (h *Handler) DeleteTranscriptionJob(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete job: " + err.Error()})
 		return
 	}
+
+	// Remove from FTS index
+	go func(id string) {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = h.jobRepo.RemoveFTSEntry(ctx, id)
+	}(jobID)
 
 	// Update usage: subtract freed disk bytes
 	if h.usageRepo != nil && job.UserID != 0 && freedBytes > 0 {

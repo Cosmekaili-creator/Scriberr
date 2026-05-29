@@ -145,6 +145,30 @@ func Initialize(dbPath string) error {
 		return fmt.Errorf("failed to create unique constraint for speaker mappings: %v", err)
 	}
 
+	// FTS5 virtual table for full-text search across title and transcript text
+	if err := DB.Exec(`CREATE VIRTUAL TABLE IF NOT EXISTS transcription_jobs_fts USING fts5(
+		job_id UNINDEXED,
+		user_id UNINDEXED,
+		title,
+		transcript_text
+	)`).Error; err != nil {
+		return fmt.Errorf("failed to create fts5 table: %v", err)
+	}
+
+	// Backfill existing jobs with transcripts not yet in the FTS index.
+	// Note: deleted_at is managed by GORM's soft-delete; we skip that filter here
+	// because the raw column value is non-NULL even for active records in this driver.
+	// Deleted records are excluded at query time by GORM's standard soft-delete scope.
+	if err := DB.Exec(`
+		INSERT INTO transcription_jobs_fts (job_id, user_id, title, transcript_text)
+		SELECT id, user_id, COALESCE(title, ''), COALESCE(json_extract(transcript, '$.text'), '')
+		FROM transcription_jobs
+		WHERE transcript IS NOT NULL
+		  AND id NOT IN (SELECT job_id FROM transcription_jobs_fts)
+	`).Error; err != nil {
+		return fmt.Errorf("failed to backfill fts5: %v", err)
+	}
+
 	return nil
 }
 
