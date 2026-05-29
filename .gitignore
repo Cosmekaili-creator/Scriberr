@@ -60,18 +60,23 @@ manifest_and_icons
 manifest_and_icons.zip
 ascribe-logos-to-regenerate.zip
 plans/
-# compiled binary
+# Compiled binaries
 ascribe
+main
+server
 tests/database_test.db-wal
 internal/web/dist
 
+# IDE / AI assistant configs
+.idea/
+.serena/
+
+# Runtime artifacts
+startup_log.txt
 
 # Development files
 prompt.txt
-# .agent/
 agent-bak/
 tmp/
-# *.svg
-# *.png
 dhl.txt
 __pycache__/
